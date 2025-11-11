@@ -1,0 +1,1 @@
+wsl bash -lc "cd \"$(wslpath -a '%cd%')\" && gemini"

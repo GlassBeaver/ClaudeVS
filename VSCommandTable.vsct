@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <Extern href="stdidcmd.h"/>
+  <Extern href="vsshlids.h"/>
+
+  <Commands package="guidClaudeVSPackage">
+    <Groups>
+      <Group guid="guidClaudeVSPackageCmdSet" id="ClaudeMenuGroup" priority="0x0600">
+        <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_VIEW"/>
+      </Group>
+    </Groups>
+
+    <Buttons>
+      <Button guid="guidClaudeVSPackageCmdSet" id="ClaudeToolWindowCommandId" priority="0x0100" type="Button">
+        <Parent guid="guidClaudeVSPackageCmdSet" id="ClaudeMenuGroup" />
+        <Icon guid="guidImages" id="bmpPic1" />
+        <Strings>
+          <ButtonText>Claude Code</ButtonText>
+        </Strings>
+      </Button>
+    </Buttons>
+
+    <Bitmaps>
+      <Bitmap guid="guidImages" href="Resources\ClaudeToolWindowCommand.png" usedList="bmpPic1"/>
+    </Bitmaps>
+  </Commands>
+
+  <Symbols>
+    <GuidSymbol name="guidClaudeVSPackage" value="{b7d90b76-b34d-46e0-ab4f-888666287245}" />
+
+    <GuidSymbol name="guidClaudeVSPackageCmdSet" value="{a7c8e9d0-1234-5678-9abc-def012345678}">
+      <IDSymbol name="ClaudeMenuGroup" value="0x1020" />
+      <IDSymbol name="ClaudeToolWindowCommandId" value="0x0100" />
+    </GuidSymbol>
+
+    <GuidSymbol name="guidImages" value="{d8f1a2b3-4c5e-6f7a-8b9c-0d1e2f3a4b5c}" >
+      <IDSymbol name="bmpPic1" value="1" />
+    </GuidSymbol>
+  </Symbols>
+</CommandTable>

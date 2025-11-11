@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit",
+      "Search",
+      "Bash(find:*)",
+      "Bash(findstr:*)",
+      "Bash(rg:*)",
+      "Bash(sed:*)",
+      "Bash(cat:*)",
+      "Bash(dir:*)",
+      "Bash(git log:*)",
+      "Bash(msbuild:*)",
+      "Bash(\"C:/Program Files/Microsoft Visual Studio/18/Insiders/MSBuild/Current/Bin/MSBuild.exe\" \"c:\\Work\\ClaudeVS\\ClaudeVS.csproj\" -t:Rebuild -p:Configuration=Debug -v:minimal)",
+      "Bash(\"C:/Program Files/Microsoft Visual Studio/18/Insiders/MSBuild/Current/Bin/MSBuild.exe\" \"ClaudeVS.csproj\" -t:Build -p:Configuration=Debug -v:detailed)",
+      "Bash(\"C:/Program Files/Microsoft Visual Studio/18/Insiders/MSBuild/Current/Bin/MSBuild.exe\" \"c:/Work/ClaudeVS/ClaudeVS.csproj\" -t:Rebuild -p:Configuration=Debug -v:detailed)",
+      "Bash(\"C:/Program Files/Microsoft Visual Studio/18/Insiders/MSBuild/Current/Bin/MSBuild.exe\":*)",
+      "Bash(\"C:/Program Files/Microsoft Visual Studio/18/Insiders/MSBuild/Current/Bin/MSBuild.exe\" \"c:/Work/ClaudeVS/ClaudeVS.csproj\" -t:Rebuild -p:Configuration=Debug -v:minimal)",
+      "Bash(\"C:/Program Files/Microsoft Visual Studio/18/Insiders/MSBuild/Current/Bin/MSBuild.exe\" \"c:/Work/ClaudeVS/ClaudeVS.csproj\" -t:Rebuild -p:Configuration=Debug)",
+      "Bash(\"C:/Program Files/Microsoft Visual Studio/18/Insiders/MSBuild/Current/Bin/MSBuild.exe\" \"c:/Work/ClaudeVS/ClaudeVS.csproj\" -t:Build -p:Configuration=Debug -v:detailed)",
+      "Bash(\"C:/Program Files/Microsoft Visual Studio/18/Insiders/MSBuild/Current/Bin/MSBuild.exe\" \"c:/Work/ClaudeVS/ClaudeVS.csproj\" -t:Build -p:Configuration=Debug)",
+      "Bash(\"C:\\Users\\sirse\\.nuget\\packages\\microsoft.vssdk.buildtools\\17.14.2120\\tools\\VSSDK\\bin\\VsixUtil.exe\" mergeCto -resourceManifest \"resources.json\" -ctoFileManifest \"ctoFiles.json\" -v)",
+      "Bash(\"C:\\Users\\sirse\\.nuget\\packages\\microsoft.vssdk.buildtools\\17.14.2120\\tools\\VSSDK\\bin\\VsixUtil.exe\" mergeCto -resourceManifest \"resources.json\" -ctoFileManifest \"ctoFiles.json\")",
+      "Bash(\"C:\\Users\\sirse\\.nuget\\packages\\microsoft.vssdk.buildtools\\17.14.2120\\tools\\VSSDK\\bin\\VsixUtil.exe\" mergeCto -resourceManifest \"obj\\Debug\\resources.json\" -ctoFileManifest \"obj\\Debug\\ctoFiles.json\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
