@@ -186,5 +186,20 @@ namespace ClaudeVS
             System.Diagnostics.Debug.WriteLine("GetActiveProjectDirectory: Returning null (no project found)");
             return null;
         }
+
+        public void SendToClaude(string message)
+        {
+            try
+            {
+                if (conPtyTerminal != null)
+                {
+                    conPtyTerminal.SendToClaude(message);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SendToClaude failed: {ex.Message}");
+            }
+        }
     }
 }

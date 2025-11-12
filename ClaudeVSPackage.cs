@@ -50,6 +50,7 @@ namespace ClaudeVS
             await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
             await ClaudeTerminalCommand.InitializeAsync(this);
+            await SendFileLocationCommand.InitializeAsync(this);
         }
 
         #endregion

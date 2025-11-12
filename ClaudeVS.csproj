@@ -49,6 +49,7 @@
     <Compile Include="ClaudeVSPackage.cs" />
     <Compile Include="ClaudeTerminal.cs" />
     <Compile Include="ClaudeTerminalCommand.cs" />
+    <Compile Include="SendFileLocationCommand.cs" />
     <Compile Include="ClaudeTerminalControl.xaml.cs">
       <DependentUpon>ClaudeTerminalControl.xaml</DependentUpon>
     </Compile>
