@@ -66,6 +66,7 @@ namespace ClaudeVS
 
                 TextSelection selection = dte.ActiveDocument.Selection as TextSelection;
                 int lineNumber = selection?.CurrentLine ?? 1;
+                string selectedText = selection?.Text;
 
                 string solutionDir = null;
                 if (dte.Solution != null && !string.IsNullOrEmpty(dte.Solution.FullName))
@@ -79,7 +80,12 @@ namespace ClaudeVS
                     relativePath = filePath.Substring(solutionDir.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                 }
 
-                string message = $"@{relativePath} line {lineNumber}\n";
+                string message = $"@{relativePath} line {lineNumber}";
+                if (!string.IsNullOrEmpty(selectedText))
+                {
+                    message += $"\n{selectedText}";
+                }
+                message += "\n\n";
 
                 ToolWindowPane window = this.package.FindToolWindow(typeof(ClaudeTerminal), 0, false);
                 if (window != null && window.Content is ClaudeTerminalControl control)
