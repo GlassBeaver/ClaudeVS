@@ -24,7 +24,7 @@
       "WebSearch",
       "WebFetch(domain:stackoverflow.com)",
       "WebFetch(domain:www.pinvoke.net)",
-      "Bash(\"C:/Program Files/Microsoft Visual Studio/18/Insiders/MSBuild/Current/Bin/MSBuild.exe\" \"c:\\Work\\ClaudeVS\\ClaudeVS.csproj\" -t:Rebuild -p:Configuration=Debug -v:minimal)",
+      "Bash(\"C:/Program Files/Microsoft Visual Studio/18/Insiders/MSBuild/Current/Bin/MSBuild.exe\" \"c:\\Work\\ClaudeVS\\ClaudeVS.csproj\" -t:Build -p:Configuration=Debug -v:minimal)",
       "Bash(where:*)",
       "Bash(nul)",
       "Bash(timeout /t 35 /nobreak)",

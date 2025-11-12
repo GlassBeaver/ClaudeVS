@@ -1,5 +1,6 @@
 # ClaudeVS - Visual Studio 2026 Extension
 
+Don't Rebuild the project, just Build it.
 DON'T EVER TRY TO UNINSTALL OR INSTALL VS EXTENSIONS!
 
 ## Project Overview

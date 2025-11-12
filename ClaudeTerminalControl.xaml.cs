@@ -1,9 +1,13 @@
 namespace ClaudeVS
 {
     using System;
+    using System.IO;
     using System.Windows.Controls;
     using System.Windows.Input;
+    using EnvDTE;
+    using EnvDTE80;
     using Microsoft.Terminal.Wpf;
+    using Microsoft.VisualStudio.Shell;
 
     /// <summary>
     /// Interaction logic for ClaudeTerminalControl.xaml
@@ -12,12 +16,14 @@ namespace ClaudeVS
     {
         private ConPtyTerminal conPtyTerminal;
         private ConPtyTerminalConnection terminalConnection;
+        private ToolWindowPane toolWindowPane;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ClaudeTerminalControl"/> class.
         /// </summary>
-        public ClaudeTerminalControl()
+        public ClaudeTerminalControl(ToolWindowPane toolWindowPane = null)
         {
+            this.toolWindowPane = toolWindowPane;
             this.InitializeComponent();
             this.Loaded += ClaudeTerminalControl_Loaded;
             this.Unloaded += ClaudeTerminalControl_Unloaded;
@@ -55,8 +61,17 @@ namespace ClaudeVS
                 conPtyTerminal = new ConPtyTerminal(rows: 30, columns: 120);
                 System.Diagnostics.Debug.WriteLine("ConPtyTerminal instance created successfully");
 
-                string workingDir = System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile);
-                System.Diagnostics.Debug.WriteLine($"Initializing ConPTY with working directory: {workingDir}");
+                // Get the active project directory, or fallback to user's home folder
+                string workingDir = GetActiveProjectDirectory();
+                if (string.IsNullOrEmpty(workingDir))
+                {
+                    workingDir = System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile);
+                    System.Diagnostics.Debug.WriteLine($"No active project found, using default working directory: {workingDir}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"Using active project directory: {workingDir}");
+                }
 
                 bool initialized = conPtyTerminal.Initialize(workingDir);
                 System.Diagnostics.Debug.WriteLine($"ConPTY Initialize returned: {initialized}");
@@ -106,6 +121,84 @@ namespace ClaudeVS
             {
                 System.Diagnostics.Debug.WriteLine($"Error disposing ConPTY terminal: {ex.Message}");
             }
+        }
+
+        private string GetActiveProjectDirectory()
+        {
+            try
+            {
+                // Get DTE (Visual Studio automation model) from tool window's service provider
+                DTE2 dte = null;
+                if (toolWindowPane != null)
+                {
+                    dte = toolWindowPane.GetService<EnvDTE.DTE, EnvDTE.DTE>() as DTE2;
+                }
+
+                // Fallback to Marshal.GetActiveObject if service provider fails
+                if (dte == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("GetActiveProjectDirectory: Service provider DTE is null, trying Marshal.GetActiveObject");
+                    dte = (DTE2)System.Runtime.InteropServices.Marshal.GetActiveObject("VisualStudio.DTE.18.0");
+                }
+
+                if (dte == null || dte.Solution == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("GetActiveProjectDirectory: DTE or Solution is null");
+                    return null;
+                }
+
+                // Try to get the project from the active document
+                System.Diagnostics.Debug.WriteLine($"GetActiveProjectDirectory: ActiveDocument = {dte.ActiveDocument?.Name ?? "null"}");
+                if (dte.ActiveDocument != null && dte.ActiveDocument.ProjectItem != null)
+                {
+                    Project project = dte.ActiveDocument.ProjectItem.ContainingProject;
+                    if (project != null && !string.IsNullOrEmpty(project.FileName))
+                    {
+                        string dir = Path.GetDirectoryName(project.FileName);
+                        System.Diagnostics.Debug.WriteLine($"GetActiveProjectDirectory: Using active document project: {dir}");
+                        return dir;
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine("GetActiveProjectDirectory: No active document with project, falling back to startup project");
+
+                // Fall back to startup project if no active document
+                var startupProjects = (Array)dte.Solution.SolutionBuild.StartupProjects;
+                if (startupProjects != null && startupProjects.Length > 0)
+                {
+                    string projectName = startupProjects.GetValue(0).ToString();
+                    System.Diagnostics.Debug.WriteLine($"GetActiveProjectDirectory: Startup project name = {projectName}");
+                    Project project = dte.Solution.Projects.Item(projectName);
+                    if (project != null && !string.IsNullOrEmpty(project.FileName))
+                    {
+                        string dir = Path.GetDirectoryName(project.FileName);
+                        System.Diagnostics.Debug.WriteLine($"GetActiveProjectDirectory: Using startup project: {dir}");
+                        return dir;
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine("GetActiveProjectDirectory: No startup project, falling back to first project");
+
+                // Final fallback to first project
+                if (dte.Solution.Projects.Count > 0)
+                {
+                    var project = dte.Solution.Projects.Item(1);
+                    if (project != null && !string.IsNullOrEmpty(project.FileName))
+                    {
+                        string dir = Path.GetDirectoryName(project.FileName);
+                        System.Diagnostics.Debug.WriteLine($"GetActiveProjectDirectory: Using first project: {dir}");
+                        return dir;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // If we can't get DTE, return null and use default
+                System.Diagnostics.Debug.WriteLine($"GetActiveProjectDirectory: Exception: {ex}");
+            }
+
+            System.Diagnostics.Debug.WriteLine("GetActiveProjectDirectory: Returning null (no project found)");
+            return null;
         }
     }
 }

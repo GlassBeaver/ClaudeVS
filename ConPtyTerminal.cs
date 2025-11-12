@@ -296,13 +296,28 @@ namespace ClaudeVS
                 System.Diagnostics.Debug.WriteLine($"ResizePseudoConsole result: {resizeResult}");
                 SafeWriteDebugFile($"ResizePseudoConsole result: {resizeResult}\n");
 
-                // Try sending Enter to trigger shell to respond
-                SafeWriteDebugFile("Sending Enter to trigger shell...\n");
-                WriteInput("\r");
+                // Claude is launched directly via PowerShell args
+                SafeWriteDebugFile("Claude launched via PowerShell args\n");
 
-                // Send dir command immediately
-                SafeWriteDebugFile("Sending 'dir' command...\n");
-                WriteInput("claude.cmd\r");
+                //BOOKMARK: 2025-11-12 18:58:08 uncomment
+                //Task.Delay(3000).ContinueWith(_ =>
+                //{
+                //    SafeWriteDebugFile("Sending 'hello' to terminal after 3 second delay...\n");
+                //    WriteInput("list files");
+
+                //    // Send Enter as raw CR (0x0D) - what PowerShell/ConPTY expects
+                //    if (inputWritePipe != null && !inputWritePipe.IsClosed)
+                //    {
+                //        if (inputStream == null)
+                //        {
+                //            inputStream = new FileStream(inputWritePipe, FileAccess.Write, 1024, false);
+                //        }
+                //        byte[] enterKey = new byte[] { 0x0D }; // Just CR
+                //        inputStream.Write(enterKey, 0, enterKey.Length);
+                //        inputStream.Flush();
+                //        SafeWriteDebugFile("Sent Enter key (0x0D) after hello\n");
+                //    }
+                //});
 
                 return true;
             }
@@ -476,15 +491,20 @@ namespace ClaudeVS
                 int securityAttributeSize = Marshal.SizeOf<SECURITY_ATTRIBUTES>();
                 var pSec = new SECURITY_ATTRIBUTES { nLength = securityAttributeSize };
                 var tSec = new SECURITY_ATTRIBUTES { nLength = securityAttributeSize };
+
+                // Get the Claude CLI path and build PowerShell command
+                string claudeCommand = GetClaudeCliPath();
+                string commandLine = $"powershell.exe -NoExit -Command \"{claudeCommand}\"";
+
                 success = CreateProcessW(
                     null,
-                    "powershell.exe",
+                    commandLine,
                     ref pSec,
                     ref tSec,
                     false,
                     EXTENDED_STARTUPINFO_PRESENT,
                     IntPtr.Zero,
-                    null,
+                    workingDirectory,
                     ref startupInfo,
                     out PROCESS_INFORMATION pInfo);
                 if (!success)
@@ -726,6 +746,42 @@ namespace ClaudeVS
                 System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.WriteInput failed: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
             }
+        }
+
+        private string GetClaudeCliPath()
+        {
+            // Try npm installed location first
+            string npmPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "npm",
+                "claude.cmd"
+            );
+            if (File.Exists(npmPath))
+                return npmPath;
+
+            // Try PATH environment variable
+            string pathEnv = Environment.GetEnvironmentVariable("PATH") ?? "";
+            foreach (string dir in pathEnv.Split(Path.PathSeparator))
+            {
+                string claudePath = Path.Combine(dir, "claude.cmd");
+                if (File.Exists(claudePath))
+                    return claudePath;
+
+                claudePath = Path.Combine(dir, "claude");
+                if (File.Exists(claudePath))
+                    return claudePath;
+
+                claudePath = Path.Combine(dir, "claude-code");
+                if (File.Exists(claudePath))
+                    return claudePath;
+
+                claudePath = Path.Combine(dir, "claude-code.cmd");
+                if (File.Exists(claudePath))
+                    return claudePath;
+            }
+
+            // Fallback to just "claude" and hope it's in PATH
+            return "claude";
         }
 
         public void Dispose()
