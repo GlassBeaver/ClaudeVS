@@ -34,11 +34,9 @@ namespace ClaudeVS
         {
             try
             {
-                System.IO.File.AppendAllText(@"c:\temp\conpty-debug.txt", "ClaudeTerminalControl_Loaded fired!\n");
                 System.Diagnostics.Debug.WriteLine("ClaudeTerminalControl_Loaded starting");
                 InitializeConPtyTerminal();
 
-                // Set focus to the terminal control so it can capture keyboard input
                 System.Diagnostics.Debug.WriteLine("Setting focus to TerminalControl");
                 TerminalControl.Focus();
                 System.Diagnostics.Debug.WriteLine($"Focus set to TerminalControl");
@@ -56,12 +54,10 @@ namespace ClaudeVS
             {
                 System.Diagnostics.Debug.WriteLine("InitializeConPtyTerminal starting");
 
-                // Create and initialize ConPTY terminal
                 System.Diagnostics.Debug.WriteLine("Creating new ConPtyTerminal instance");
                 conPtyTerminal = new ConPtyTerminal(rows: 30, columns: 120);
                 System.Diagnostics.Debug.WriteLine("ConPtyTerminal instance created successfully");
 
-                // Get the active project directory, or fallback to user's home folder
                 string workingDir = GetActiveProjectDirectory();
                 if (string.IsNullOrEmpty(workingDir))
                 {
@@ -86,16 +82,13 @@ namespace ClaudeVS
 
                 System.Diagnostics.Debug.WriteLine("SUCCESS: ConPTY terminal initialized successfully");
 
-                // Create the connection bridge between ConPTY and TerminalControl
                 System.Diagnostics.Debug.WriteLine("Creating ConPtyTerminalConnection");
                 terminalConnection = new ConPtyTerminalConnection(conPtyTerminal);
 
-                // Connect the terminal control to the ConPTY backend
                 System.Diagnostics.Debug.WriteLine("Setting TerminalControl.Connection");
                 TerminalControl.Connection = terminalConnection;
                 System.Diagnostics.Debug.WriteLine("TerminalControl.Connection set successfully");
 
-                // Start the connection (this may be required for the terminal to become active)
                 System.Diagnostics.Debug.WriteLine("Starting the terminal connection");
                 terminalConnection.Start();
                 System.Diagnostics.Debug.WriteLine("Terminal connection started");
@@ -108,7 +101,6 @@ namespace ClaudeVS
                 conPtyTerminal = null;
             }
         }
-
 
         private void ClaudeTerminalControl_Unloaded(object sender, System.Windows.RoutedEventArgs e)
         {
@@ -127,14 +119,12 @@ namespace ClaudeVS
         {
             try
             {
-                // Get DTE (Visual Studio automation model) from tool window's service provider
                 DTE2 dte = null;
                 if (toolWindowPane != null)
                 {
                     dte = toolWindowPane.GetService<EnvDTE.DTE, EnvDTE.DTE>() as DTE2;
                 }
 
-                // Fallback to Marshal.GetActiveObject if service provider fails
                 if (dte == null)
                 {
                     System.Diagnostics.Debug.WriteLine("GetActiveProjectDirectory: Service provider DTE is null, trying Marshal.GetActiveObject");
@@ -147,7 +137,6 @@ namespace ClaudeVS
                     return null;
                 }
 
-                // Try to get the project from the active document
                 System.Diagnostics.Debug.WriteLine($"GetActiveProjectDirectory: ActiveDocument = {dte.ActiveDocument?.Name ?? "null"}");
                 if (dte.ActiveDocument != null && dte.ActiveDocument.ProjectItem != null)
                 {
@@ -162,7 +151,6 @@ namespace ClaudeVS
 
                 System.Diagnostics.Debug.WriteLine("GetActiveProjectDirectory: No active document with project, falling back to startup project");
 
-                // Fall back to startup project if no active document
                 var startupProjects = (Array)dte.Solution.SolutionBuild.StartupProjects;
                 if (startupProjects != null && startupProjects.Length > 0)
                 {
@@ -179,7 +167,6 @@ namespace ClaudeVS
 
                 System.Diagnostics.Debug.WriteLine("GetActiveProjectDirectory: No startup project, falling back to first project");
 
-                // Final fallback to first project
                 if (dte.Solution.Projects.Count > 0)
                 {
                     var project = dte.Solution.Projects.Item(1);
@@ -193,7 +180,6 @@ namespace ClaudeVS
             }
             catch (Exception ex)
             {
-                // If we can't get DTE, return null and use default
                 System.Diagnostics.Debug.WriteLine($"GetActiveProjectDirectory: Exception: {ex}");
             }
 

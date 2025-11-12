@@ -66,25 +66,16 @@ namespace ClaudeVS
         /// <returns>A task representing the async work of command initialization, or an already completed task if there is none. Do not return null from this method.</returns>
         public static async Task InitializeAsync(AsyncPackage package)
         {
-            // Switch to the main thread - the call to AddCommand in ClaudeTerminalCommand's constructor requires
-            // the UI thread.
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(package.DisposalToken);
 
             OleMenuCommandService commandService = await package.GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
             Instance = new ClaudeTerminalCommand(package, commandService);
         }
 
-        /// <summary>
-        /// Shows the tool window when the menu item is clicked.
-        /// </summary>
-        /// <param name="sender">The event sender.</param>
-        /// <param name="e">The event args.</param>
         private void Execute(object sender, EventArgs e)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            // Get the instance number 0 of this tool window (the constructor of the tool window does not register
-            // the tool window as being persistent, so the regular number of instances is 1)
             ToolWindowPane window = this.package.FindToolWindow(typeof(ClaudeTerminal), 0, true);
             if ((null == window) || (null == window.Frame))
             {

@@ -23,7 +23,6 @@ namespace ClaudeVS
 
         public async Task<bool> InitializeAsync(string executablePath)
         {
-            // Store the executable path for later use
             this.executablePath = executablePath;
             return true;
         }
@@ -40,8 +39,6 @@ namespace ClaudeVS
             {
                 try
                 {
-                    // Build the command - input goes through stdin (required for -p flag)
-                    // Note: Each tool spec must be its own quoted argument. We allow all bash, read, write operations.
                     var process = new Process
                     {
                         StartInfo = new ProcessStartInfo
@@ -66,15 +63,12 @@ namespace ClaudeVS
 
                     process.Start();
 
-                    // Write message to stdin and close it so Claude knows we're done sending input
                     process.StandardInput.WriteLine(message);
                     process.StandardInput.Close();
 
-                    // Read all output from stdout
                     string fullOutput = process.StandardOutput.ReadToEnd();
                     string error = process.StandardError.ReadToEnd();
 
-                    // Wait for process to exit
                     bool exited = process.WaitForExit(timeoutMs);
 
                     System.Diagnostics.Debug.WriteLine($"Process exited: {exited}, ExitCode: {process.ExitCode}");
@@ -89,11 +83,9 @@ namespace ClaudeVS
 
                     process.Dispose();
 
-                    // Parse the JSON output to extract response text and session ID
                     string responseText = "";
                     string sessionId = ExtractSessionIdFromJson(fullOutput);
 
-                    // Extract all text content from the JSON output
                     if (!string.IsNullOrEmpty(fullOutput))
                     {
                         responseText = ExtractTextFromJson(fullOutput);
@@ -107,7 +99,6 @@ namespace ClaudeVS
                     System.Diagnostics.Debug.WriteLine($"Extracted session ID: {sessionId}");
                     System.Diagnostics.Debug.WriteLine($"Response text length: {responseText.Length}");
 
-                    // Fire chunk event for streaming-like behavior
                     if (!string.IsNullOrEmpty(responseText))
                     {
                         ChunkReceived?.Invoke(this, responseText);
@@ -130,7 +121,6 @@ namespace ClaudeVS
 
             try
             {
-                // Look for "session_id" field in the JSON output
                 int sessionIdIndex = jsonOutput.IndexOf("\"session_id\":");
                 if (sessionIdIndex != -1)
                 {
@@ -164,8 +154,6 @@ namespace ClaudeVS
 
             try
             {
-                // Parse through the JSON output looking for text content
-                // Claude's response can contain multiple text fields across different parts of the JSON
                 int index = 0;
                 while ((index = jsonOutput.IndexOf("\"text\":", index)) != -1)
                 {
@@ -173,7 +161,6 @@ namespace ClaudeVS
                     if (startIndex != -1)
                     {
                         int endIndex = jsonOutput.IndexOf('"', startIndex + 1);
-                        // Handle escaped quotes within the text
                         while (endIndex != -1 && jsonOutput[endIndex - 1] == '\\')
                         {
                             endIndex = jsonOutput.IndexOf('"', endIndex + 1);
@@ -182,7 +169,6 @@ namespace ClaudeVS
                         if (endIndex != -1)
                         {
                             string text = jsonOutput.Substring(startIndex + 1, endIndex - startIndex - 1);
-                            // Unescape JSON string escapes
                             text = text.Replace("\\\"", "\"")
                                       .Replace("\\n", "\n")
                                       .Replace("\\r", "\r")
@@ -211,13 +197,11 @@ namespace ClaudeVS
 
         private string EscapeForCommandLine(string input)
         {
-            // Escape quotes for command line arguments
             return input.Replace("\"", "\\\"");
         }
 
         public void Dispose()
         {
-            // Nothing to clean up
         }
     }
 }

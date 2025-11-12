@@ -17,11 +17,9 @@ namespace ClaudeVS
 
             System.Diagnostics.Debug.WriteLine("ConPtyTerminalConnection constructor: wiring up event handlers");
 
-            // Wire up ConPTY output to terminal control input
             conPtyTerminal.OutputReceived += (sender, output) =>
             {
                 System.Diagnostics.Debug.WriteLine($"ConPtyTerminalConnection: OutputReceived event fired, data length: {output?.Length ?? 0}");
-                // Forward ConPTY output to the terminal control
                 if (TerminalOutput != null)
                 {
                     TerminalOutput.Invoke(this, new TerminalOutputEventArgs(output));
@@ -36,7 +34,6 @@ namespace ClaudeVS
             conPtyTerminal.ProcessExited += (sender, exitCode) =>
             {
                 System.Diagnostics.Debug.WriteLine($"ConPtyTerminalConnection: ProcessExited event fired, exit code: {exitCode}");
-                // Notify when process exits
                 Closed?.Invoke(this, EventArgs.Empty);
             };
 
@@ -52,7 +49,6 @@ namespace ClaudeVS
             {
                 System.Diagnostics.Debug.WriteLine($"ConPtyTerminalConnection.WriteInput called with: '{data}' (length: {data?.Length ?? 0})");
 
-                // Forward user input from the terminal control to ConPTY
                 if (conPtyTerminal != null && conPtyTerminal.IsRunning)
                 {
                     conPtyTerminal.WriteInput(data);
@@ -72,7 +68,6 @@ namespace ClaudeVS
 
         public void Resize(uint rows, uint columns)
         {
-            // TODO: Implement resize support if needed
             System.Diagnostics.Debug.WriteLine($"Terminal resize requested: {columns}x{rows}");
         }
 
@@ -90,7 +85,6 @@ namespace ClaudeVS
 
         public void Start()
         {
-            // Already started in ConPtyTerminal.Initialize()
             System.Diagnostics.Debug.WriteLine("ConPtyTerminalConnection.Start() called (already initialized)");
         }
     }

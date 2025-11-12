@@ -43,7 +43,6 @@ namespace ClaudeVS
                 System.Diagnostics.Debug.WriteLine($"ClaudeCliManager.SendMessageAsync: CALLED with workingDirectory = {workingDirectory}");
                 System.Diagnostics.Debug.WriteLine($"ClaudeCliManager.SendMessageAsync: Current session ID: {currentSessionId}");
 
-                // Find Claude CLI path if not already found
                 if (string.IsNullOrEmpty(claudePath))
                 {
                     claudePath = GetClaudeCliPath();
@@ -54,17 +53,14 @@ namespace ClaudeVS
                     }
                 }
 
-                // Ensure git-bash path is set
                 SetupGitBashPath();
 
-                // Initialize ConPTY session if needed
                 if (!initialized || conPtySession == null || !conPtySession.IsRunning)
                 {
                     System.Diagnostics.Debug.WriteLine($"ClaudeCliManager.SendMessageAsync: Creating new ConPtySession with workingDirectory = {workingDirectory}");
                     conPtySession?.Dispose();
                     conPtySession = new ConPtySession(workingDirectory);
 
-                    // Wire up streaming chunk events
                     conPtySession.ChunkReceived += (sender, chunk) => ChunkReceived?.Invoke(this, chunk);
 
                     if (!await conPtySession.InitializeAsync(claudePath))
@@ -74,24 +70,20 @@ namespace ClaudeVS
                     }
 
                     initialized = true;
-                    currentSessionId = null;  // Reset session ID for new session
+                    currentSessionId = null;
                 }
 
-                // Prepare the message with session resume if we have a previous session
                 string messageToSend = message;
                 if (!string.IsNullOrEmpty(currentSessionId))
                 {
-                    // Continue the existing conversation session
                     messageToSend = $"--resume {currentSessionId}\n{message}";
                     System.Diagnostics.Debug.WriteLine($"ClaudeCliManager.SendMessageAsync: Resuming session {currentSessionId}");
                 }
 
-                // Send message and get response
                 try
                 {
                     var (response, sessionId) = await conPtySession.SendMessageAsync(messageToSend, 30000);
 
-                    // Update the session ID for next message
                     if (!string.IsNullOrEmpty(sessionId))
                     {
                         currentSessionId = sessionId;
@@ -109,7 +101,6 @@ namespace ClaudeVS
                 }
                 catch (Exception ex)
                 {
-                    // Session may have crashed, reset for next attempt
                     initialized = false;
                     ErrorOccurred?.Invoke(this, $"Claude CLI error: {ex.Message}");
                 }
@@ -122,7 +113,6 @@ namespace ClaudeVS
 
         private string GetClaudeCliPath()
         {
-            // Try npm installed location first
             string npmPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "npm",
@@ -131,7 +121,6 @@ namespace ClaudeVS
             if (File.Exists(npmPath))
                 return npmPath;
 
-            // Try PATH environment variable
             string pathEnv = Environment.GetEnvironmentVariable("PATH") ?? "";
             foreach (string dir in pathEnv.Split(Path.PathSeparator))
             {
@@ -157,12 +146,10 @@ namespace ClaudeVS
 
         private void SetupGitBashPath()
         {
-            // Check if CLAUDE_CODE_GIT_BASH_PATH is already set
             string existingPath = Environment.GetEnvironmentVariable("CLAUDE_CODE_GIT_BASH_PATH");
             if (!string.IsNullOrEmpty(existingPath) && File.Exists(existingPath))
                 return;
 
-            // Try common Git Bash locations
             string[] gitBashPaths = new[]
             {
                 @"C:\Program Files\Git\bin\bash.exe",
@@ -180,7 +167,6 @@ namespace ClaudeVS
                 }
             }
 
-            // If not found in standard locations, search PATH
             string pathEnv = Environment.GetEnvironmentVariable("PATH") ?? "";
             foreach (string dir in pathEnv.Split(Path.PathSeparator))
             {

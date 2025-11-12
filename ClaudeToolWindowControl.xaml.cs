@@ -43,7 +43,6 @@ namespace ClaudeVS
 
         private void InputTextBox_KeyDown(object sender, KeyEventArgs e)
         {
-            // Send on Ctrl+Enter
             if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control)
             {
                 SendMessage();
@@ -58,22 +57,18 @@ namespace ClaudeVS
             if (string.IsNullOrEmpty(message))
                 return;
 
-            // Add user message to chat
             AddMessage(true, message);
             InputTextBox.Clear();
 
-            // Create response message that will be updated with streaming chunks
             currentResponseMessage = new ChatMessage { IsUser = false, Message = "" };
             messages.Add(currentResponseMessage);
 
-            // Show loading indicator
             LoadingIndicator.Visibility = Visibility.Visible;
             SendButton.IsEnabled = false;
 
             try
             {
                 System.Diagnostics.Debug.WriteLine("SendMessage: About to call GetActiveProjectDirectory");
-                // Get the active project directory
                 string workingDir = GetActiveProjectDirectory();
                 System.Diagnostics.Debug.WriteLine($"SendMessage: Working directory result = {workingDir ?? "null"}");
                 if (!string.IsNullOrEmpty(workingDir))
@@ -108,14 +103,12 @@ namespace ClaudeVS
         {
             try
             {
-                // Get DTE (Visual Studio automation model) from tool window's service provider
                 DTE2 dte = null;
                 if (toolWindowPane != null)
                 {
                     dte = toolWindowPane.GetService<EnvDTE.DTE, EnvDTE.DTE>() as DTE2;
                 }
 
-                // Fallback to Marshal.GetActiveObject if service provider fails
                 if (dte == null)
                 {
                     System.Diagnostics.Debug.WriteLine("GetActiveProjectDirectory: Service provider DTE is null, trying Marshal.GetActiveObject");
@@ -128,7 +121,6 @@ namespace ClaudeVS
                     return null;
                 }
 
-                // Try to get the project from the active document
                 System.Diagnostics.Debug.WriteLine($"GetActiveProjectDirectory: ActiveDocument = {dte.ActiveDocument?.Name ?? "null"}");
                 if (dte.ActiveDocument != null && dte.ActiveDocument.ProjectItem != null)
                 {
@@ -143,7 +135,6 @@ namespace ClaudeVS
 
                 System.Diagnostics.Debug.WriteLine("GetActiveProjectDirectory: No active document with project, falling back to startup project");
 
-                // Fall back to startup project if no active document
                 var startupProjects = (Array)dte.Solution.SolutionBuild.StartupProjects;
                 if (startupProjects != null && startupProjects.Length > 0)
                 {
@@ -160,7 +151,6 @@ namespace ClaudeVS
 
                 System.Diagnostics.Debug.WriteLine("GetActiveProjectDirectory: No startup project, falling back to first project");
 
-                // Final fallback to first project
                 if (dte.Solution.Projects.Count > 0)
                 {
                     var project = dte.Solution.Projects.Item(1);
@@ -174,7 +164,6 @@ namespace ClaudeVS
             }
             catch (Exception ex)
             {
-                // If we can't get DTE, return null and use default
                 System.Diagnostics.Debug.WriteLine($"GetActiveProjectDirectory: Exception: {ex}");
             }
 
@@ -188,10 +177,8 @@ namespace ClaudeVS
             {
                 if (currentResponseMessage != null)
                 {
-                    // Append chunk to current response message
                     currentResponseMessage.Message += chunk;
 
-                    // Auto-scroll to bottom
                     if (ChatMessages.Items.Count > 0)
                     {
                         var border = ChatMessages.ItemContainerGenerator.ContainerFromIndex(ChatMessages.Items.Count - 1) as FrameworkElement;
@@ -205,8 +192,6 @@ namespace ClaudeVS
         {
             Dispatcher.Invoke(() =>
             {
-                // Response already accumulated in currentResponseMessage via chunks
-                // Just hide loading and re-enable send
                 LoadingIndicator.Visibility = Visibility.Collapsed;
                 SendButton.IsEnabled = true;
                 currentResponseMessage = null;
@@ -234,7 +219,6 @@ namespace ClaudeVS
         {
             messages.Add(new ChatMessage { IsUser = isUser, Message = message });
 
-            // Auto-scroll to bottom
             Dispatcher.InvokeAsync(() =>
             {
                 if (ChatMessages.Items.Count > 0)
