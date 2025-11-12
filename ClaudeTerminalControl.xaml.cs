@@ -17,6 +17,8 @@ namespace ClaudeVS
         private ConPtyTerminal conPtyTerminal;
         private ConPtyTerminalConnection terminalConnection;
         private ToolWindowPane toolWindowPane;
+        private DTE2 dte;
+        private SolutionEvents solutionEvents;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ClaudeTerminalControl"/> class.
@@ -35,7 +37,29 @@ namespace ClaudeVS
             try
             {
                 System.Diagnostics.Debug.WriteLine("ClaudeTerminalControl_Loaded starting");
-                InitializeConPtyTerminal();
+
+                dte = GetDTE();
+                if (dte != null && dte.Events != null)
+                {
+                    solutionEvents = dte.Events.SolutionEvents;
+                    if (solutionEvents != null)
+                    {
+                        solutionEvents.Opened += SolutionEvents_Opened;
+                        solutionEvents.AfterClosing += SolutionEvents_AfterClosing;
+                        System.Diagnostics.Debug.WriteLine("Subscribed to solution events");
+                    }
+                }
+
+                string projectDir = GetActiveProjectDirectory();
+                if (!string.IsNullOrEmpty(projectDir))
+                {
+                    System.Diagnostics.Debug.WriteLine($"Project found, initializing terminal with: {projectDir}");
+                    InitializeConPtyTerminal();
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("No project found, waiting for project to be opened");
+                }
 
                 System.Diagnostics.Debug.WriteLine("Setting focus to TerminalControl");
                 TerminalControl.Focus();
@@ -106,6 +130,12 @@ namespace ClaudeVS
         {
             try
             {
+                if (solutionEvents != null)
+                {
+                    solutionEvents.Opened -= SolutionEvents_Opened;
+                    solutionEvents.AfterClosing -= SolutionEvents_AfterClosing;
+                }
+
                 conPtyTerminal?.Dispose();
                 conPtyTerminal = null;
             }
@@ -115,75 +145,121 @@ namespace ClaudeVS
             }
         }
 
+        private void SolutionEvents_Opened()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("SolutionEvents_Opened: Solution opened");
+                string projectDir = GetActiveProjectDirectory();
+                if (!string.IsNullOrEmpty(projectDir))
+                {
+                    System.Diagnostics.Debug.WriteLine($"SolutionEvents_Opened: Restarting Claude with new project directory: {projectDir}");
+                    RestartClaudeWithWorkingDirectory(projectDir);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SolutionEvents_Opened error: {ex.Message}");
+            }
+        }
+
+        private void SolutionEvents_AfterClosing()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("SolutionEvents_AfterClosing: Solution closed, stopping Claude");
+                StopClaude();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SolutionEvents_AfterClosing error: {ex.Message}");
+            }
+        }
+
+        private void RestartClaudeWithWorkingDirectory(string workingDirectory)
+        {
+            try
+            {
+                StopClaude();
+                InitializeConPtyTerminal();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"RestartClaudeWithWorkingDirectory error: {ex.Message}");
+            }
+        }
+
+        private void StopClaude()
+        {
+            try
+            {
+                if (terminalConnection != null)
+                {
+                    TerminalControl.Connection = null;
+                    terminalConnection = null;
+                }
+
+                if (conPtyTerminal != null)
+                {
+                    conPtyTerminal.Dispose();
+                    conPtyTerminal = null;
+                }
+
+                System.Diagnostics.Debug.WriteLine("Claude terminal stopped");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"StopClaude error: {ex.Message}");
+            }
+        }
+
+        private DTE2 GetDTE()
+        {
+            try
+            {
+                if (toolWindowPane != null)
+                {
+                    DTE2 result = toolWindowPane.GetService<EnvDTE.DTE, EnvDTE.DTE>() as DTE2;
+                    if (result != null)
+                        return result;
+                }
+
+                return (DTE2)System.Runtime.InteropServices.Marshal.GetActiveObject("VisualStudio.DTE.18.0");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetDTE error: {ex.Message}");
+                return null;
+            }
+        }
+
         private string GetActiveProjectDirectory()
         {
             try
             {
-                DTE2 dte = null;
-                if (toolWindowPane != null)
-                {
-                    dte = toolWindowPane.GetService<EnvDTE.DTE, EnvDTE.DTE>() as DTE2;
-                }
+                DTE2 localDte = dte ?? GetDTE();
 
-                if (dte == null)
-                {
-                    System.Diagnostics.Debug.WriteLine("GetActiveProjectDirectory: Service provider DTE is null, trying Marshal.GetActiveObject");
-                    dte = (DTE2)System.Runtime.InteropServices.Marshal.GetActiveObject("VisualStudio.DTE.18.0");
-                }
-
-                if (dte == null || dte.Solution == null)
+                if (localDte == null || localDte.Solution == null)
                 {
                     System.Diagnostics.Debug.WriteLine("GetActiveProjectDirectory: DTE or Solution is null");
                     return null;
                 }
 
-                System.Diagnostics.Debug.WriteLine($"GetActiveProjectDirectory: ActiveDocument = {dte.ActiveDocument?.Name ?? "null"}");
-                if (dte.ActiveDocument != null && dte.ActiveDocument.ProjectItem != null)
+                if (localDte.Solution.IsOpen && !string.IsNullOrEmpty(localDte.Solution.FullName))
                 {
-                    Project project = dte.ActiveDocument.ProjectItem.ContainingProject;
-                    if (project != null && !string.IsNullOrEmpty(project.FileName))
-                    {
-                        string dir = Path.GetDirectoryName(project.FileName);
-                        System.Diagnostics.Debug.WriteLine($"GetActiveProjectDirectory: Using active document project: {dir}");
-                        return dir;
-                    }
+                    string solutionDir = Path.GetDirectoryName(localDte.Solution.FullName);
+                    System.Diagnostics.Debug.WriteLine($"GetActiveProjectDirectory: Using solution directory: {solutionDir}");
+                    return solutionDir;
                 }
 
-                System.Diagnostics.Debug.WriteLine("GetActiveProjectDirectory: No active document with project, falling back to startup project");
-
-                var startupProjects = (Array)dte.Solution.SolutionBuild.StartupProjects;
-                if (startupProjects != null && startupProjects.Length > 0)
-                {
-                    string projectName = startupProjects.GetValue(0).ToString();
-                    System.Diagnostics.Debug.WriteLine($"GetActiveProjectDirectory: Startup project name = {projectName}");
-                    Project project = dte.Solution.Projects.Item(projectName);
-                    if (project != null && !string.IsNullOrEmpty(project.FileName))
-                    {
-                        string dir = Path.GetDirectoryName(project.FileName);
-                        System.Diagnostics.Debug.WriteLine($"GetActiveProjectDirectory: Using startup project: {dir}");
-                        return dir;
-                    }
-                }
-
-                System.Diagnostics.Debug.WriteLine("GetActiveProjectDirectory: No startup project, falling back to first project");
-
-                if (dte.Solution.Projects.Count > 0)
-                {
-                    var project = dte.Solution.Projects.Item(1);
-                    if (project != null && !string.IsNullOrEmpty(project.FileName))
-                    {
-                        string dir = Path.GetDirectoryName(project.FileName);
-                        System.Diagnostics.Debug.WriteLine($"GetActiveProjectDirectory: Using first project: {dir}");
-                        return dir;
-                    }
-                }
+                System.Diagnostics.Debug.WriteLine("GetActiveProjectDirectory: No solution open");
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"GetActiveProjectDirectory: Exception: {ex}");
             }
 
-            System.Diagnostics.Debug.WriteLine("GetActiveProjectDirectory: Returning null (no project found)");
+            System.Diagnostics.Debug.WriteLine("GetActiveProjectDirectory: Returning null (no solution found)");
             return null;
         }
 
