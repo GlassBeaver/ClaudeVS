@@ -10,7 +10,7 @@ namespace ClaudeVS
         public ClaudeToolWindow() : base(null)
         {
             this.Caption = "Claude Code";
-            this.Content = new ClaudeToolWindowControl();
+            this.Content = new ClaudeToolWindowControl(this);
         }
     }
 }

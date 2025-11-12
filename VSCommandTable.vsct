@@ -19,6 +19,13 @@
           <ButtonText>Claude Code</ButtonText>
         </Strings>
       </Button>
+      <Button guid="guidClaudeVSPackageCmdSet" id="ClaudeTerminalCommandId" priority="0x0101" type="Button">
+        <Parent guid="guidClaudeVSPackageCmdSet" id="ClaudeMenuGroup" />
+        <Icon guid="guidImages" id="bmpPic1" />
+        <Strings>
+          <ButtonText>Claude Term</ButtonText>
+        </Strings>
+      </Button>
     </Buttons>
 
     <Bitmaps>
@@ -32,6 +39,7 @@
     <GuidSymbol name="guidClaudeVSPackageCmdSet" value="{a7c8e9d0-1234-5678-9abc-def012345678}">
       <IDSymbol name="ClaudeMenuGroup" value="0x1020" />
       <IDSymbol name="ClaudeToolWindowCommandId" value="0x0100" />
+      <IDSymbol name="ClaudeTerminalCommandId" value="0x0101" />
     </GuidSymbol>
 
     <GuidSymbol name="guidImages" value="{d8f1a2b3-4c5e-6f7a-8b9c-0d1e2f3a4b5c}" >

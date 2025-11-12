@@ -34,18 +34,19 @@
                                     </Style.Triggers>
                                 </Style>
                             </Border.Style>
-                            <TextBlock Text="{Binding Message}" TextWrapping="Wrap">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
+                            <TextBox Text="{Binding Message, Mode=OneWay}" TextWrapping="Wrap" IsReadOnly="True" BorderThickness="0" Background="Transparent">
+                                <TextBox.Style>
+                                    <Style TargetType="TextBox">
                                         <Setter Property="Foreground" Value="Black"/>
+                                        <Setter Property="Padding" Value="0"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsUser}" Value="True">
                                                 <Setter Property="Foreground" Value="White"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
+                                </TextBox.Style>
+                            </TextBox>
                         </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>

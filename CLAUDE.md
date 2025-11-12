@@ -1,5 +1,7 @@
 # ClaudeVS - Visual Studio 2026 Extension
 
+DON'T EVER TRY TO UNINSTALL OR INSTALL VS EXTENSIONS!
+
 ## Project Overview
 
 ClaudeVS is a Visual Studio 2026 (Insiders) extension that integrates Claude Code CLI into the IDE through a dockable tool window with a chat interface. This is an MVP (Minimum Viable Product) implementation.

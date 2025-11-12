@@ -52,7 +52,15 @@
     <Compile Include="ClaudeToolWindowControl.xaml.cs">
       <DependentUpon>ClaudeToolWindowControl.xaml</DependentUpon>
     </Compile>
+    <Compile Include="ClaudeTerminal.cs" />
+    <Compile Include="ClaudeTerminalCommand.cs" />
+    <Compile Include="ClaudeTerminalControl.xaml.cs">
+      <DependentUpon>ClaudeTerminalControl.xaml</DependentUpon>
+    </Compile>
     <Compile Include="ClaudeCliManager.cs" />
+    <Compile Include="ConPtySession.cs" />
+    <Compile Include="ConPtyTerminal.cs" />
+    <Compile Include="ConPtyTerminalConnection.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="source.extension.vsixmanifest">
@@ -61,6 +69,10 @@
   </ItemGroup>
   <ItemGroup>
     <Page Include="ClaudeToolWindowControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="ClaudeTerminalControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -74,6 +86,11 @@
     <Content Include="Resources\ClaudeToolWindowCommand.png">
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
+    <Content Include="Lib\Microsoft.Terminal.Control.dll">
+      <IncludeInVSIX>true</IncludeInVSIX>
+      <Link>Microsoft.Terminal.Control.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -84,6 +101,10 @@
     <Reference Include="System.Xaml" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="CI.Microsoft.Terminal.Wpf">
+      <Version>1.22.250204002</Version>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.0.32112.339" ExcludeAssets="runtime" NoWarn="NU1604" />
     <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.14.2120" NoWarn="NU1604" />
   </ItemGroup>
