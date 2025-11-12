@@ -47,18 +47,11 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ClaudeVSPackage.cs" />
-    <Compile Include="ClaudeToolWindow.cs" />
-    <Compile Include="ClaudeToolWindowCommand.cs" />
-    <Compile Include="ClaudeToolWindowControl.xaml.cs">
-      <DependentUpon>ClaudeToolWindowControl.xaml</DependentUpon>
-    </Compile>
     <Compile Include="ClaudeTerminal.cs" />
     <Compile Include="ClaudeTerminalCommand.cs" />
     <Compile Include="ClaudeTerminalControl.xaml.cs">
       <DependentUpon>ClaudeTerminalControl.xaml</DependentUpon>
     </Compile>
-    <Compile Include="ClaudeCliManager.cs" />
-    <Compile Include="ConPtySession.cs" />
     <Compile Include="ConPtyTerminal.cs" />
     <Compile Include="ConPtyTerminalConnection.cs" />
   </ItemGroup>
@@ -68,10 +61,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Page Include="ClaudeToolWindowControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
     <Page Include="ClaudeTerminalControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

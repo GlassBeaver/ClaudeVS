@@ -26,7 +26,6 @@ namespace ClaudeVS
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [Guid(ClaudeVSPackage.PackageGuidString)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
-    [ProvideToolWindow(typeof(ClaudeToolWindow))]
     [ProvideToolWindow(typeof(ClaudeTerminal))]
     public sealed class ClaudeVSPackage : AsyncPackage
     {
@@ -50,8 +49,6 @@ namespace ClaudeVS
             // Do any initialization that requires the UI thread after switching to the UI thread.
             await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
-            // Initialize the commands that open the tool windows
-            await ClaudeToolWindowCommand.InitializeAsync(this);
             await ClaudeTerminalCommand.InitializeAsync(this);
         }
 

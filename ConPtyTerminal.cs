@@ -260,20 +260,9 @@ namespace ClaudeVS
                 int resizeResult = ResizePseudoConsole(pseudoConsoleHandle, consoleSize);
                 System.Diagnostics.Debug.WriteLine($"ResizePseudoConsole result: {resizeResult}");
 
-                Task.Delay(3000).ContinueWith(_ =>
+                Task.Delay(10000).ContinueWith(_ =>
                 {
-                    WriteInput("list files");
-
-                    if (inputWritePipe != null && !inputWritePipe.IsClosed)
-                    {
-                        if (inputStream == null)
-                        {
-                            inputStream = new FileStream(inputWritePipe, FileAccess.Write, 1024, false);
-                        }
-                        byte[] enterKey = new byte[] { 0x0D };
-                        inputStream.Write(enterKey, 0, enterKey.Length);
-                        inputStream.Flush();
-                    }
+                    SendToClaude("list files");
                 });
 
                 return true;
@@ -657,6 +646,44 @@ namespace ClaudeVS
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.WriteInput failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+            }
+        }
+
+        /// <summary>
+        /// Sends a message to Claude by writing the text and pressing Enter.
+        /// </summary>
+        /// <param name="message">The message to send to Claude</param>
+        public void SendToClaude(string message)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.SendToClaude: Sending message='{message}'");
+
+                WriteInput(message);
+
+                if (inputWritePipe != null && !inputWritePipe.IsClosed)
+                {
+                    if (inputStream == null)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.SendToClaude: Creating input FileStream");
+                        inputStream = new FileStream(inputWritePipe, FileAccess.Write, 1024, false);
+                    }
+
+                    byte[] enterKey = new byte[] { 0x0D };
+                    System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.SendToClaude: Sending Enter key");
+                    inputStream.Write(enterKey, 0, enterKey.Length);
+                    inputStream.Flush();
+                    System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.SendToClaude: Enter key sent successfully");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.SendToClaude: Cannot send - inputWritePipe is invalid/closed");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.SendToClaude failed: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
             }
         }
