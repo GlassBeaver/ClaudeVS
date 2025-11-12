@@ -79,12 +79,12 @@ namespace ClaudeVS
                     relativePath = filePath.Substring(solutionDir.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                 }
 
-                string message = $"@{relativePath} line {lineNumber}";
+                string message = $"@{relativePath} line {lineNumber}\n";
 
                 ToolWindowPane window = this.package.FindToolWindow(typeof(ClaudeTerminal), 0, false);
                 if (window != null && window.Content is ClaudeTerminalControl control)
                 {
-                    control.SendToClaude(message);
+                    control.SendToClaude(message, false);
                 }
             }
             catch (Exception ex)

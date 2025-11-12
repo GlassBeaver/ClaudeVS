@@ -260,11 +260,6 @@ namespace ClaudeVS
                 int resizeResult = ResizePseudoConsole(pseudoConsoleHandle, consoleSize);
                 System.Diagnostics.Debug.WriteLine($"ResizePseudoConsole result: {resizeResult}");
 
-                Task.Delay(10000).ContinueWith(_ =>
-                {
-                    SendToClaude("list files");
-                });
-
                 return true;
             }
             catch (Exception ex)
@@ -654,7 +649,7 @@ namespace ClaudeVS
         /// Sends a message to Claude by writing the text and pressing Enter.
         /// </summary>
         /// <param name="message">The message to send to Claude</param>
-        public void SendToClaude(string message)
+        public void SendToClaude(string message, bool bEnter)
         {
             try
             {
@@ -662,24 +657,23 @@ namespace ClaudeVS
 
                 WriteInput(message);
 
-                if (inputWritePipe != null && !inputWritePipe.IsClosed)
-                {
-                    if (inputStream == null)
+                if (bEnter)
+                    if (inputWritePipe != null && !inputWritePipe.IsClosed)
                     {
-                        System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.SendToClaude: Creating input FileStream");
-                        inputStream = new FileStream(inputWritePipe, FileAccess.Write, 1024, false);
-                    }
+                        if (inputStream == null)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.SendToClaude: Creating input FileStream");
+                            inputStream = new FileStream(inputWritePipe, FileAccess.Write, 1024, false);
+                        }
 
-                    byte[] enterKey = new byte[] { 0x0D };
-                    System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.SendToClaude: Sending Enter key");
-                    inputStream.Write(enterKey, 0, enterKey.Length);
-                    inputStream.Flush();
-                    System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.SendToClaude: Enter key sent successfully");
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.SendToClaude: Cannot send - inputWritePipe is invalid/closed");
-                }
+                        byte[] enterKey = new byte[] { 0x0D };
+                        System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.SendToClaude: Sending Enter key");
+                        inputStream.Write(enterKey, 0, enterKey.Length);
+                        inputStream.Flush();
+                        System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.SendToClaude: Enter key sent successfully");
+                    }
+                    else
+                        System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.SendToClaude: Cannot send - inputWritePipe is invalid/closed");
             }
             catch (Exception ex)
             {

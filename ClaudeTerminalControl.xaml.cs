@@ -187,14 +187,12 @@ namespace ClaudeVS
             return null;
         }
 
-        public void SendToClaude(string message)
+        public void SendToClaude(string message, bool bEnter)
         {
             try
             {
                 if (conPtyTerminal != null)
-                {
-                    conPtyTerminal.SendToClaude(message);
-                }
+                    conPtyTerminal.SendToClaude(message, bEnter);
             }
             catch (Exception ex)
             {
