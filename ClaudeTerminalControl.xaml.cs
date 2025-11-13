@@ -30,7 +30,24 @@ namespace ClaudeVS
             this.Loaded += ClaudeTerminalControl_Loaded;
             this.Unloaded += ClaudeTerminalControl_Unloaded;
             this.SizeChanged += ClaudeTerminalControl_SizeChanged;
+            this.PreviewKeyDown += ClaudeTerminalControl_PreviewKeyDown;
             System.Diagnostics.Debug.WriteLine("ClaudeTerminalControl constructed");
+        }
+
+        private void ClaudeTerminalControl_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+            }
+        }
+
+        private void TerminalControl_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+            }
         }
 
         private void ClaudeTerminalControl_Loaded(object sender, System.Windows.RoutedEventArgs e)
@@ -71,6 +88,8 @@ namespace ClaudeVS
                     System.Diagnostics.Debug.WriteLine("Terminal already initialized, reconnecting to existing instance");
                     ReconnectTerminal();
                 }
+
+                TerminalControl.PreviewKeyDown += TerminalControl_PreviewKeyDown;
 
                 System.Diagnostics.Debug.WriteLine("Setting focus to TerminalControl");
                 TerminalControl.Focus();
