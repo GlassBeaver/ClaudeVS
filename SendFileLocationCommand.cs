@@ -93,9 +93,7 @@ namespace ClaudeVS
                     Microsoft.VisualStudio.ErrorHandler.ThrowOnFailure(windowFrame.Show());
 
                     if (window.Content is ClaudeTerminalControl control)
-                    {
-                        control.SendToClaude(message, false);
-                    }
+                        control.SendToClaude(message, false, true);
                 }
             }
             catch (Exception ex)

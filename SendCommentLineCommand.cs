@@ -98,12 +98,10 @@ namespace ClaudeVS
                 ToolWindowPane window = this.package.FindToolWindow(typeof(ClaudeTerminal), 0, true);
                 if (window?.Frame is IVsWindowFrame windowFrame)
                 {
-                    Microsoft.VisualStudio.ErrorHandler.ThrowOnFailure(windowFrame.Show());
+                    //Microsoft.VisualStudio.ErrorHandler.ThrowOnFailure(windowFrame.Show());
 
                     if (window.Content is ClaudeTerminalControl control)
-                    {
-                        control.SendToClaude(message, true);
-                    }
+                        control.SendToClaude(message, true, false);
                 }
             }
             catch (Exception ex)

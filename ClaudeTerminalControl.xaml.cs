@@ -358,7 +358,7 @@ namespace ClaudeVS
             return null;
         }
 
-        public void SendToClaude(string message, bool bEnter)
+        public void SendToClaude(string message, bool bEnter, bool bFocus)
         {
             try
             {
@@ -366,7 +366,8 @@ namespace ClaudeVS
                 if (terminal != null)
                     terminal.SendToClaude(message, bEnter);
 
-                TerminalControl.Focus();
+                if (bFocus)
+                    TerminalControl.Focus();
             }
             catch (Exception ex)
             {
