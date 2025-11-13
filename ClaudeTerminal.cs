@@ -21,7 +21,7 @@ namespace ClaudeVS
         /// </summary>
         public ClaudeTerminal() : base(null)
         {
-            this.Caption = "Claude Term";
+            this.Caption = "ClaudeVS";
 
             // This is the user control hosted by the tool window; Note that, even if this class implements IDisposable,
             // we are not calling Dispose on this object as this is lifetime managed by the

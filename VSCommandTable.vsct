@@ -16,7 +16,7 @@
         <Parent guid="guidClaudeVSPackageCmdSet" id="ClaudeMenuGroup" />
         <Icon guid="guidImages" id="bmpPic1" />
         <Strings>
-          <ButtonText>Claude Term</ButtonText>
+          <ButtonText>ClaudeVS</ButtonText>
         </Strings>
       </Button>
       <Button guid="guidClaudeVSPackageCmdSet" id="SendFileLocationCommandId" priority="0x0102" type="Button">
