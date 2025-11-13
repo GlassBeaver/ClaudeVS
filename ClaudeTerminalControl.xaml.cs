@@ -93,10 +93,18 @@ namespace ClaudeVS
 
                     isInitialized = true;
                 }
+                else if (claudeTerminal?.Terminal == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("Terminal was disposed (window closed), reinitializing");
+                    string projectDir = GetActiveProjectDirectory();
+                    if (!string.IsNullOrEmpty(projectDir))
+                    {
+                        InitializeConPtyTerminal();
+                    }
+                }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine("Terminal already initialized, reconnecting to existing instance");
-                    ReconnectTerminal();
+                    System.Diagnostics.Debug.WriteLine("Terminal already initialized and connected, nothing to do");
                 }
 
                 TerminalControl.PreviewKeyDown += TerminalControl_PreviewKeyDown;
@@ -189,6 +197,8 @@ namespace ClaudeVS
                 {
                     System.Diagnostics.Debug.WriteLine("Reconnecting to existing terminal instance");
                     TerminalControl.Connection = claudeTerminal.TerminalConnection;
+                    TerminalControl.InvalidateVisual();
+                    TerminalControl.UpdateLayout();
                 }
             }
             catch (Exception ex)
@@ -223,8 +233,7 @@ namespace ClaudeVS
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("ClaudeTerminalControl_Unloaded: Disconnecting terminal connection (but not disposing)");
-                TerminalControl.Connection = null;
+                System.Diagnostics.Debug.WriteLine("ClaudeTerminalControl_Unloaded: Not disconnecting - preserving terminal state");
             }
             catch (Exception ex)
             {
