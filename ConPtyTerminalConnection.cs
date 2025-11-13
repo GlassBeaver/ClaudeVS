@@ -68,7 +68,25 @@ namespace ClaudeVS
 
         public void Resize(uint rows, uint columns)
         {
-            System.Diagnostics.Debug.WriteLine($"Terminal resize requested: {columns}x{rows}");
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"ConPtyTerminalConnection.Resize: Terminal resize requested: {columns}x{rows}");
+
+                if (conPtyTerminal != null && conPtyTerminal.IsRunning)
+                {
+                    conPtyTerminal.Resize((ushort)rows, (ushort)columns);
+                    System.Diagnostics.Debug.WriteLine($"ConPtyTerminalConnection.Resize: Terminal resized successfully");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"ConPtyTerminalConnection.Resize: Cannot resize - terminal not running or null");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ConPtyTerminalConnection.Resize failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+            }
         }
 
         public void Close()

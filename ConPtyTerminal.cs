@@ -211,8 +211,8 @@ namespace ClaudeVS
         public event EventHandler<string> OutputReceived;
         public event EventHandler<int> ProcessExited;
 
-        public ushort Rows { get; private set; } = 30;
-        public ushort Columns { get; private set; } = 120;
+        public ushort Rows { get; set; } = 30;
+        public ushort Columns { get; set; } = 120;
         public bool IsRunning { get; private set; }
 
         public ConPtyTerminal(ushort rows = 30, ushort columns = 120)
@@ -418,7 +418,11 @@ namespace ClaudeVS
                 var tSec = new SECURITY_ATTRIBUTES { nLength = securityAttributeSize };
 
                 string claudeCommand = GetClaudeCliPath();
-                string commandLine = $"powershell.exe -NoExit -Command \"{claudeCommand}\"";
+                string commandLine = $"cmd.exe /c \"{claudeCommand}\"";
+                //string commandLine = $"cmd.exe";
+                //string commandLine = $"powershell.exe";
+                //string commandLine = $"{claudeCommand}";
+                //string commandLine = $"powershell.exe -NoExit -Command \"{claudeCommand}\"";
 
                 success = CreateProcessW(
                     null,
@@ -678,6 +682,40 @@ namespace ClaudeVS
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.SendToClaude failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+            }
+        }
+
+        public void Resize(ushort rows, ushort columns)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.Resize: Resizing to {columns}x{rows} (current: {Columns}x{Rows})");
+
+                if (!IsRunning || pseudoConsoleHandle == IntPtr.Zero)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.Resize: Cannot resize - terminal not running or invalid handle");
+                    return;
+                }
+
+                Rows = rows;
+                Columns = columns;
+
+                COORD consoleSize = new COORD { X = (short)Columns, Y = (short)Rows };
+                int resizeResult = ResizePseudoConsole(pseudoConsoleHandle, consoleSize);
+
+                if (resizeResult == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.Resize: Successfully resized to {Columns}x{Rows}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.Resize: ResizePseudoConsole failed with error code: {resizeResult}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.Resize failed: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
             }
         }
