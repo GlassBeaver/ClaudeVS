@@ -51,6 +51,7 @@ namespace ClaudeVS
 
             await ClaudeTerminalCommand.InitializeAsync(this);
             await SendFileLocationCommand.InitializeAsync(this);
+            await SendCommentLineCommand.InitializeAsync(this);
         }
 
         #endregion

@@ -25,6 +25,12 @@
           <ButtonText>Send File Location to Claude</ButtonText>
         </Strings>
       </Button>
+      <Button guid="guidClaudeVSPackageCmdSet" id="SendCommentLineCommandId" priority="0x0103" type="Button">
+        <Parent guid="guidClaudeVSPackageCmdSet" id="ClaudeMenuGroup" />
+        <Strings>
+          <ButtonText>Send Comment Line to Claude</ButtonText>
+        </Strings>
+      </Button>
     </Buttons>
 
     <Bitmaps>
@@ -39,6 +45,7 @@
       <IDSymbol name="ClaudeMenuGroup" value="0x1020" />
       <IDSymbol name="ClaudeTerminalCommandId" value="0x0101" />
       <IDSymbol name="SendFileLocationCommandId" value="0x0102" />
+      <IDSymbol name="SendCommentLineCommandId" value="0x0103" />
     </GuidSymbol>
 
     <GuidSymbol name="guidImages" value="{d8f1a2b3-4c5e-6f7a-8b9c-0d1e2f3a4b5c}" >

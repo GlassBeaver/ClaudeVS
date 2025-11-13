@@ -9,7 +9,7 @@ Don't ever try to uninstall or install VS extensions.
 
 ## Project Overview
 
-ClaudeVS is a Visual Studio 2026 extension that integrates Claude Code CLI into the IDE through a dockable tool window.
+ClaudeVS is a Visual Studio 2026 extension that integrates Claude Code CLI into the IDE.
 
 ## Build Command
 ```bash
