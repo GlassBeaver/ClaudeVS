@@ -718,19 +718,12 @@ namespace ClaudeVS
         public void Dispose()
         {
             Cleanup();
-            GC.SuppressFinalize(this);
         }
 
         private void Cleanup()
         {
             try
             {
-                if (Environment.HasShutdownStarted || AppDomain.CurrentDomain.IsFinalizingForUnload())
-                {
-                    System.Diagnostics.Debug.WriteLine("Cleanup skipped: shutdown/unload in progress");
-                    return;
-                }
-
                 IsRunning = false;
                 cancellationTokenSource?.Cancel();
                 cancellationTokenSource?.Dispose();

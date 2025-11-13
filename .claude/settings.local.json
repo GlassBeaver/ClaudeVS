@@ -14,7 +14,7 @@
       "Bash(cat:*)",
       "Bash(dir:*)",
       "Bash(git log:*)",
-      "Bash(where:*)",
+      "Bash(where:*)"
     ],
     "deny": [],
     "ask": []
