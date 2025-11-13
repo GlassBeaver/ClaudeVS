@@ -15,21 +15,21 @@ namespace ClaudeVS
     /// </summary>
     public partial class ClaudeTerminalControl : UserControl
     {
-        private ConPtyTerminal conPtyTerminal;
-        private ConPtyTerminalConnection terminalConnection;
-        private ToolWindowPane toolWindowPane;
+        private ClaudeTerminal claudeTerminal;
         private DTE2 dte;
         private SolutionEvents solutionEvents;
+        private bool isInitialized;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ClaudeTerminalControl"/> class.
         /// </summary>
         public ClaudeTerminalControl(ToolWindowPane toolWindowPane = null)
         {
-            this.toolWindowPane = toolWindowPane;
+            this.claudeTerminal = toolWindowPane as ClaudeTerminal;
             this.InitializeComponent();
             this.Loaded += ClaudeTerminalControl_Loaded;
             this.Unloaded += ClaudeTerminalControl_Unloaded;
+            this.SizeChanged += ClaudeTerminalControl_SizeChanged;
             System.Diagnostics.Debug.WriteLine("ClaudeTerminalControl constructed");
         }
 
@@ -39,27 +39,37 @@ namespace ClaudeVS
             {
                 System.Diagnostics.Debug.WriteLine("ClaudeTerminalControl_Loaded starting");
 
-                dte = GetDTE();
-                if (dte != null && dte.Events != null)
+                if (!isInitialized)
                 {
-                    solutionEvents = dte.Events.SolutionEvents;
-                    if (solutionEvents != null)
+                    dte = GetDTE();
+                    if (dte != null && dte.Events != null)
                     {
-                        solutionEvents.Opened += SolutionEvents_Opened;
-                        solutionEvents.AfterClosing += SolutionEvents_AfterClosing;
-                        System.Diagnostics.Debug.WriteLine("Subscribed to solution events");
+                        solutionEvents = dte.Events.SolutionEvents;
+                        if (solutionEvents != null)
+                        {
+                            solutionEvents.Opened += SolutionEvents_Opened;
+                            solutionEvents.AfterClosing += SolutionEvents_AfterClosing;
+                            System.Diagnostics.Debug.WriteLine("Subscribed to solution events");
+                        }
                     }
-                }
 
-                string projectDir = GetActiveProjectDirectory();
-                if (!string.IsNullOrEmpty(projectDir))
-                {
-                    System.Diagnostics.Debug.WriteLine($"Project found, initializing terminal with: {projectDir}");
-                    InitializeConPtyTerminal();
+                    string projectDir = GetActiveProjectDirectory();
+                    if (!string.IsNullOrEmpty(projectDir))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Project found, initializing terminal with: {projectDir}");
+                        InitializeConPtyTerminal();
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("No project found, waiting for project to be opened");
+                    }
+
+                    isInitialized = true;
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine("No project found, waiting for project to be opened");
+                    System.Diagnostics.Debug.WriteLine("Terminal already initialized, reconnecting to existing instance");
+                    ReconnectTerminal();
                 }
 
                 System.Diagnostics.Debug.WriteLine("Setting focus to TerminalControl");
@@ -80,7 +90,7 @@ namespace ClaudeVS
                 System.Diagnostics.Debug.WriteLine("InitializeConPtyTerminal starting");
 
                 System.Diagnostics.Debug.WriteLine("Creating new ConPtyTerminal instance");
-                conPtyTerminal = new ConPtyTerminal(rows: 30, columns: 120);
+                var conPtyTerminal = new ConPtyTerminal(rows: 30, columns: 120);
                 System.Diagnostics.Debug.WriteLine("ConPtyTerminal instance created successfully");
 
                 string workingDir = GetActiveProjectDirectory();
@@ -101,14 +111,15 @@ namespace ClaudeVS
                 {
                     System.Diagnostics.Debug.WriteLine("FAILED: ConPTY terminal initialization returned false");
                     conPtyTerminal?.Dispose();
-                    conPtyTerminal = null;
                     return;
                 }
 
                 System.Diagnostics.Debug.WriteLine("SUCCESS: ConPTY terminal initialized successfully");
 
                 System.Diagnostics.Debug.WriteLine("Creating ConPtyTerminalConnection");
-                terminalConnection = new ConPtyTerminalConnection(conPtyTerminal);
+                var terminalConnection = new ConPtyTerminalConnection(conPtyTerminal);
+
+                claudeTerminal?.SetTerminalInstances(conPtyTerminal, terminalConnection);
 
                 var theme = new TerminalTheme
                 {
@@ -138,8 +149,44 @@ namespace ClaudeVS
             {
                 System.Diagnostics.Debug.WriteLine($"EXCEPTION in InitializeConPtyTerminal: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                conPtyTerminal?.Dispose();
-                conPtyTerminal = null;
+            }
+        }
+
+        private void ReconnectTerminal()
+        {
+            try
+            {
+                if (claudeTerminal?.TerminalConnection != null)
+                {
+                    System.Diagnostics.Debug.WriteLine("Reconnecting to existing terminal instance");
+                    TerminalControl.Connection = claudeTerminal.TerminalConnection;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"EXCEPTION in ReconnectTerminal: {ex.Message}");
+            }
+        }
+
+        private void ClaudeTerminalControl_SizeChanged(object sender, System.Windows.SizeChangedEventArgs e)
+        {
+            try
+            {
+                var terminalConnection = claudeTerminal?.TerminalConnection;
+                if (terminalConnection != null && TerminalControl.ActualHeight > 0 && TerminalControl.ActualWidth > 0)
+                {
+                    double fontSize = 10;
+                    double charHeight = fontSize * 1.2;
+
+                    uint columns = 120;
+                    uint rows = (uint)Math.Max(1, TerminalControl.ActualHeight / charHeight);
+
+                    terminalConnection.Resize(rows, columns);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ClaudeTerminalControl_SizeChanged error: {ex.Message}");
             }
         }
 
@@ -147,18 +194,12 @@ namespace ClaudeVS
         {
             try
             {
-                if (solutionEvents != null)
-                {
-                    solutionEvents.Opened -= SolutionEvents_Opened;
-                    solutionEvents.AfterClosing -= SolutionEvents_AfterClosing;
-                }
-
-                conPtyTerminal?.Dispose();
-                conPtyTerminal = null;
+                System.Diagnostics.Debug.WriteLine("ClaudeTerminalControl_Unloaded: Disconnecting terminal connection (but not disposing)");
+                TerminalControl.Connection = null;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error disposing ConPTY terminal: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error in ClaudeTerminalControl_Unloaded: {ex.Message}");
             }
         }
 
@@ -210,17 +251,16 @@ namespace ClaudeVS
         {
             try
             {
-                if (terminalConnection != null)
+                TerminalControl.Connection = null;
+
+                var terminal = claudeTerminal?.Terminal;
+                if (terminal != null)
                 {
-                    TerminalControl.Connection = null;
-                    terminalConnection = null;
+                    terminal.Dispose();
                 }
 
-                if (conPtyTerminal != null)
-                {
-                    conPtyTerminal.Dispose();
-                    conPtyTerminal = null;
-                }
+                claudeTerminal?.SetTerminalInstances(null, null);
+                isInitialized = false;
 
                 System.Diagnostics.Debug.WriteLine("Claude terminal stopped");
             }
@@ -234,9 +274,9 @@ namespace ClaudeVS
         {
             try
             {
-                if (toolWindowPane != null)
+                if (claudeTerminal != null)
                 {
-                    DTE2 result = toolWindowPane.GetService<EnvDTE.DTE, EnvDTE.DTE>() as DTE2;
+                    DTE2 result = claudeTerminal.GetService<EnvDTE.DTE, EnvDTE.DTE>() as DTE2;
                     if (result != null)
                         return result;
                 }
@@ -284,8 +324,9 @@ namespace ClaudeVS
         {
             try
             {
-                if (conPtyTerminal != null)
-                    conPtyTerminal.SendToClaude(message, bEnter);
+                var terminal = claudeTerminal?.Terminal;
+                if (terminal != null)
+                    terminal.SendToClaude(message, bEnter);
             }
             catch (Exception ex)
             {

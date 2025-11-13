@@ -690,6 +690,7 @@ namespace ClaudeVS
         {
             try
             {
+                columns = 120;
                 System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.Resize: Resizing to {columns}x{rows} (current: {Columns}x{Rows})");
 
                 if (!IsRunning || pseudoConsoleHandle == IntPtr.Zero)

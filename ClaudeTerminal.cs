@@ -16,6 +16,12 @@ namespace ClaudeVS
     [Guid("f4c7b9e2-3a5d-6c8f-1b2e-4a9d7c5f3e8b")]
     public class ClaudeTerminal : ToolWindowPane
     {
+        private ConPtyTerminal conPtyTerminal;
+        private ConPtyTerminalConnection terminalConnection;
+
+        public ConPtyTerminal Terminal => conPtyTerminal;
+        public ConPtyTerminalConnection TerminalConnection => terminalConnection;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ClaudeTerminal"/> class.
         /// </summary>
@@ -27,6 +33,23 @@ namespace ClaudeVS
             // we are not calling Dispose on this object as this is lifetime managed by the
             // shell so the copy instance will be reused.
             this.Content = new ClaudeTerminalControl(this);
+        }
+
+        public void SetTerminalInstances(ConPtyTerminal terminal, ConPtyTerminalConnection connection)
+        {
+            conPtyTerminal = terminal;
+            terminalConnection = connection;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                conPtyTerminal?.Dispose();
+                terminalConnection = null;
+                conPtyTerminal = null;
+            }
+            base.Dispose(disposing);
         }
     }
 }
