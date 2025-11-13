@@ -87,10 +87,15 @@ namespace ClaudeVS
                 }
                 message += "\n\n";
 
-                ToolWindowPane window = this.package.FindToolWindow(typeof(ClaudeTerminal), 0, false);
-                if (window != null && window.Content is ClaudeTerminalControl control)
+                ToolWindowPane window = this.package.FindToolWindow(typeof(ClaudeTerminal), 0, true);
+                if (window?.Frame is IVsWindowFrame windowFrame)
                 {
-                    control.SendToClaude(message, false);
+                    Microsoft.VisualStudio.ErrorHandler.ThrowOnFailure(windowFrame.Show());
+
+                    if (window.Content is ClaudeTerminalControl control)
+                    {
+                        control.SendToClaude(message, false);
+                    }
                 }
             }
             catch (Exception ex)

@@ -10,6 +10,8 @@ namespace ClaudeVS
     public class ConPtyTerminalConnection : ITerminalConnection
     {
         private readonly ConPtyTerminal conPtyTerminal;
+        private static DateTime lastEscapeTime = DateTime.MinValue;
+        private static readonly TimeSpan escapeSuppressionWindow = TimeSpan.FromMilliseconds(200);
 
         public ConPtyTerminalConnection(ConPtyTerminal terminal)
         {
@@ -43,11 +45,26 @@ namespace ClaudeVS
         public event EventHandler<TerminalOutputEventArgs> TerminalOutput;
         public event EventHandler Closed;
 
+        public static void NotifyEscapeHandled()
+        {
+            lastEscapeTime = DateTime.UtcNow;
+            System.Diagnostics.Debug.WriteLine($"ConPtyTerminalConnection: Escape handled at {lastEscapeTime.Ticks}, suppressing TerminalControl input for {escapeSuppressionWindow.TotalMilliseconds}ms");
+        }
+
         public void WriteInput(string data)
         {
             try
             {
                 System.Diagnostics.Debug.WriteLine($"ConPtyTerminalConnection.WriteInput called with: '{data}' (length: {data?.Length ?? 0})");
+
+                var timeSinceEscape = DateTime.UtcNow - lastEscapeTime;
+                System.Diagnostics.Debug.WriteLine($"ConPtyTerminalConnection.WriteInput: Time since last escape: {timeSinceEscape.TotalMilliseconds}ms (threshold: {escapeSuppressionWindow.TotalMilliseconds}ms)");
+
+                if (timeSinceEscape < escapeSuppressionWindow)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ConPtyTerminalConnection.WriteInput: SUPPRESSING input - within suppression window");
+                    return;
+                }
 
                 if (conPtyTerminal != null && conPtyTerminal.IsRunning)
                 {

@@ -86,12 +86,17 @@ namespace ClaudeVS
 
                 if ((VSConstants.VSStd97CmdID)nCmdID == VSConstants.VSStd97CmdID.PaneActivateDocWindow)
                 {
-                    System.Diagnostics.Debug.WriteLine("PaneActivateDocWindow (Escape) command intercepted, forwarding to terminal");
+                    System.Diagnostics.Debug.WriteLine("PaneActivateDocWindow (Escape) command intercepted in Exec");
 
                     if (conPtyTerminal != null && conPtyTerminal.IsRunning)
                     {
+                        ConPtyTerminalConnection.NotifyEscapeHandled();
                         conPtyTerminal.WriteInput("\x1b");
-                        System.Diagnostics.Debug.WriteLine("Escape key sent to terminal");
+                        System.Diagnostics.Debug.WriteLine("Escape key sent to terminal from Exec");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("Cannot send Escape - terminal not running");
                     }
 
                     return VSConstants.S_OK;

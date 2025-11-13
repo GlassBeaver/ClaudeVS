@@ -38,6 +38,15 @@ namespace ClaudeVS
         {
             if (e.Key == Key.Escape)
             {
+                System.Diagnostics.Debug.WriteLine("ClaudeTerminalControl_PreviewKeyDown: Escape key intercepted, sending to terminal");
+
+                var terminal = claudeTerminal?.Terminal;
+                if (terminal != null && terminal.IsRunning)
+                {
+                    terminal.WriteInput("\x1b");
+                    System.Diagnostics.Debug.WriteLine("ClaudeTerminalControl_PreviewKeyDown: Escape sent successfully");
+                }
+
                 e.Handled = true;
             }
         }
@@ -46,6 +55,7 @@ namespace ClaudeVS
         {
             if (e.Key == Key.Escape)
             {
+                System.Diagnostics.Debug.WriteLine("TerminalControl_PreviewKeyDown: Escape key already handled by parent");
                 e.Handled = true;
             }
         }
@@ -346,6 +356,8 @@ namespace ClaudeVS
                 var terminal = claudeTerminal?.Terminal;
                 if (terminal != null)
                     terminal.SendToClaude(message, bEnter);
+
+                TerminalControl.Focus();
             }
             catch (Exception ex)
             {
