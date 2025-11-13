@@ -14,7 +14,10 @@
       "Bash(cat:*)",
       "Bash(dir:*)",
       "Bash(git log:*)",
-      "Bash(where:*)"
+      "Bash(where:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(\"C:/Program Files/Microsoft Visual Studio/18/Insiders/MSBuild/Current/Bin/MSBuild.exe\" \"c:\\Work\\ClaudeVS\\ClaudeVS.csproj\" -t:Build -p:Configuration=Debug -v:minimal)"
     ],
     "deny": [],
     "ask": []

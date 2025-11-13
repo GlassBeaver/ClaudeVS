@@ -3,6 +3,7 @@
 ## Code Conventions
 
 Don't add new comments anywhere. Don't remove existing comments unless instructed to do so.
+Don't add log statements unless explicitly told to.
 Don't Rebuild the project, just Build it.
 Don't ever try to uninstall or install VS extensions.
 

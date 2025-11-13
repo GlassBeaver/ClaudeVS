@@ -4,6 +4,7 @@ namespace ClaudeVS
     using System.IO;
     using System.Windows.Controls;
     using System.Windows.Input;
+    using System.Windows.Media;
     using EnvDTE;
     using EnvDTE80;
     using Microsoft.Terminal.Wpf;
@@ -108,6 +109,22 @@ namespace ClaudeVS
 
                 System.Diagnostics.Debug.WriteLine("Creating ConPtyTerminalConnection");
                 terminalConnection = new ConPtyTerminalConnection(conPtyTerminal);
+
+                var theme = new TerminalTheme
+                {
+                    DefaultBackground = 0xFF1e1e1e,
+                    DefaultForeground = 0xFFd4d4d4,
+                    DefaultSelectionBackground = 0xFF264F78,
+                    CursorStyle = CursorStyle.BlinkingBar,
+                    ColorTable = new uint[]
+                    {
+                        0xFF0C0C0C, 0xFFC50F1F, 0xFF13A10E, 0xFFC19C00,
+                        0xFF0037DA, 0xFF881798, 0xFF3A96DD, 0xFFCCCCCC,
+                        0xFF767676, 0xFFE74856, 0xFF16C60C, 0xFFF9F1A5,
+                        0xFF3B78FF, 0xFFB4009E, 0xFF61D6D6, 0xFFF2F2F2
+                    }
+                };
+                TerminalControl.SetTheme(theme, "Consolas", 10, Colors.Transparent);
 
                 System.Diagnostics.Debug.WriteLine("Setting TerminalControl.Connection");
                 TerminalControl.Connection = terminalConnection;
