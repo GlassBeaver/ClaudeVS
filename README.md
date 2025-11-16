@@ -10,4 +10,17 @@ Uses a custom-built integrated Windows Terminal because the one up on nuget wasn
 Nothing is saved by the extension: no credentials, conversations or anything since this is the actual Claude Code CLI program running inside VS.
 The project was written entirely by Sonnet 4.5 so it's got lots of useless comments and debug logging.
 
+**Usage**
+
+| Menu Item  | Description |
+| --- | --- |
+| View -> ClaudeVS | Launch Claude Code CLI (requires an open project/solution) |
+| View -> Send File Location to Claude | Send file path and line number along with any text that's selected |
+| View -> Send Comment Line to Claude | Execute the current line as a command for code generation |
+
+All of these are hotkeyable:
+* View.ClaudeVS
+* View.SendCommentLinetoClaude
+* View.SendFileLocationtoClaude
+
 ![ClaudeVS](https://github.com/user-attachments/assets/b472dd7b-3c2a-45cb-8ab6-2026d1a5f0a0)
