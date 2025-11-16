@@ -418,8 +418,8 @@ namespace ClaudeVS
                 var tSec = new SECURITY_ATTRIBUTES { nLength = securityAttributeSize };
 
                 string claudeCommand = GetClaudeCliPath();
-                //string commandLine = $"cmd.exe /c \"{claudeCommand}\"";
-                string commandLine = $"cmd.exe";
+                string commandLine = $"cmd.exe /c \"{claudeCommand}\"";
+                //string commandLine = $"cmd.exe";
                 //string commandLine = $"powershell.exe";
                 //string commandLine = $"{claudeCommand}";
                 //string commandLine = $"powershell.exe -NoExit -Command \"{claudeCommand}\"";

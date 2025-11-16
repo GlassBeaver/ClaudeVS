@@ -83,23 +83,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <TargetPath>Microsoft.Terminal.Control.dll</TargetPath>
     </Content>
-    <Content Include="Lib\Microsoft.Terminal.Control.Debug.pdb" Condition="'$(Configuration)' == 'Debug'">
-      <IncludeInVSIX>true</IncludeInVSIX>
-      <Link>Microsoft.Terminal.Control.pdb</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <TargetPath>Microsoft.Terminal.Control.pdb</TargetPath>
-    </Content>
     <Content Include="Lib\Microsoft.Terminal.Control.Release.dll" Condition="'$(Configuration)' == 'Release'">
       <IncludeInVSIX>true</IncludeInVSIX>
       <Link>Microsoft.Terminal.Control.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <TargetPath>Microsoft.Terminal.Control.dll</TargetPath>
-    </Content>
-    <Content Include="Lib\Microsoft.Terminal.Control.Release.pdb" Condition="'$(Configuration)' == 'Release'">
-      <IncludeInVSIX>true</IncludeInVSIX>
-      <Link>Microsoft.Terminal.Control.pdb</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <TargetPath>Microsoft.Terminal.Control.pdb</TargetPath>
     </Content>
   </ItemGroup>
   <ItemGroup>
