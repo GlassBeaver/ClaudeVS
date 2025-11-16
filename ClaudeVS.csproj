@@ -77,10 +77,29 @@
     <Content Include="Resources\ClaudeToolWindowCommand.png">
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="Lib\Microsoft.Terminal.Control.dll">
+    <Content Include="Lib\Microsoft.Terminal.Control.Debug.dll" Condition="'$(Configuration)' == 'Debug'">
       <IncludeInVSIX>true</IncludeInVSIX>
       <Link>Microsoft.Terminal.Control.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Microsoft.Terminal.Control.dll</TargetPath>
+    </Content>
+    <Content Include="Lib\Microsoft.Terminal.Control.Debug.pdb" Condition="'$(Configuration)' == 'Debug'">
+      <IncludeInVSIX>true</IncludeInVSIX>
+      <Link>Microsoft.Terminal.Control.pdb</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Microsoft.Terminal.Control.pdb</TargetPath>
+    </Content>
+    <Content Include="Lib\Microsoft.Terminal.Control.Release.dll" Condition="'$(Configuration)' == 'Release'">
+      <IncludeInVSIX>true</IncludeInVSIX>
+      <Link>Microsoft.Terminal.Control.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Microsoft.Terminal.Control.dll</TargetPath>
+    </Content>
+    <Content Include="Lib\Microsoft.Terminal.Control.Release.pdb" Condition="'$(Configuration)' == 'Release'">
+      <IncludeInVSIX>true</IncludeInVSIX>
+      <Link>Microsoft.Terminal.Control.pdb</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Microsoft.Terminal.Control.pdb</TargetPath>
     </Content>
   </ItemGroup>
   <ItemGroup>
@@ -92,10 +111,8 @@
     <Reference Include="System.Xaml" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="CI.Microsoft.Terminal.Wpf">
-      <Version>1.22.250204002</Version>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
+    <PackageReference Include="CI.Microsoft.Terminal.Wpf" Version="1.25.250100001-debug" PrivateAssets="all" Condition="'$(Configuration)' == 'Debug'" />
+    <PackageReference Include="CI.Microsoft.Terminal.Wpf" Version="1.25.250100001-release" PrivateAssets="all" Condition="'$(Configuration)' == 'Release'" />
     <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.0.32112.339" ExcludeAssets="runtime" NoWarn="NU1604" />
     <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.14.2120" NoWarn="NU1604" />
   </ItemGroup>

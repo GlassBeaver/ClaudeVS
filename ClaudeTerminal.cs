@@ -2,7 +2,9 @@ namespace ClaudeVS
 {
     using System;
     using System.Runtime.InteropServices;
+    using System.Threading.Tasks;
     using Microsoft.VisualStudio.Shell;
+    using Microsoft.VisualStudio.Shell.Interop;
     using Microsoft.VisualStudio.OLE.Interop;
     using Microsoft.VisualStudio;
 
@@ -65,18 +67,6 @@ namespace ClaudeVS
 
         int IOleCommandTarget.QueryStatus(ref Guid pguidCmdGroup, uint cCmds, OLECMD[] prgCmds, IntPtr pCmdText)
         {
-            if (pguidCmdGroup == VSConstants.GUID_VSStandardCommandSet97)
-            {
-                for (uint i = 0; i < cCmds; i++)
-                {
-                    if ((VSConstants.VSStd97CmdID)prgCmds[i].cmdID == VSConstants.VSStd97CmdID.PaneActivateDocWindow)
-                    {
-                        System.Diagnostics.Debug.WriteLine("PaneActivateDocWindow command blocked in QueryStatus");
-                        return (int)Microsoft.VisualStudio.OLE.Interop.Constants.OLECMDERR_E_NOTSUPPORTED;
-                    }
-                }
-            }
-
             IOleCommandTarget baseTarget = (IOleCommandTarget)base.GetService(typeof(IOleCommandTarget));
             if (baseTarget != null)
             {
@@ -87,28 +77,17 @@ namespace ClaudeVS
 
         int IOleCommandTarget.Exec(ref Guid pguidCmdGroup, uint nCmdID, uint nCmdexecopt, IntPtr pvaIn, IntPtr pvaOut)
         {
-            System.Diagnostics.Debug.WriteLine($"ClaudeTerminal.Exec: pguidCmdGroup={pguidCmdGroup}, nCmdID={nCmdID}");
-
-            if (pguidCmdGroup == VSConstants.GUID_VSStandardCommandSet97)
+            if (pguidCmdGroup == Microsoft.VisualStudio.VSConstants.GUID_VSStandardCommandSet97)
             {
-                System.Diagnostics.Debug.WriteLine($"VSStd97CmdID: {(VSConstants.VSStd97CmdID)nCmdID}");
-
                 if ((VSConstants.VSStd97CmdID)nCmdID == VSConstants.VSStd97CmdID.PaneActivateDocWindow)
                 {
-                    System.Diagnostics.Debug.WriteLine("PaneActivateDocWindow (Escape) command intercepted in Exec");
-
+                    System.Diagnostics.Debug.WriteLine("Escape key pressed, forwarding to Claude");
                     if (conPtyTerminal != null && conPtyTerminal.IsRunning)
                     {
-                        ConPtyTerminalConnection.NotifyEscapeHandled();
-                        conPtyTerminal.WriteInput("\x1b");
-                        System.Diagnostics.Debug.WriteLine("Escape key sent to terminal from Exec");
+						System.Diagnostics.Debug.WriteLine("Writing Esc...");
+						conPtyTerminal.WriteInput("\x1b");
                     }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine("Cannot send Escape - terminal not running");
-                    }
-
-                    return VSConstants.S_OK;
+					return (int)Microsoft.VisualStudio.VSConstants.S_OK;
                 }
             }
 

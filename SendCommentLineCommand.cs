@@ -95,13 +95,10 @@ namespace ClaudeVS
 
                 string message = $"TASK: Insert code completion at @{relativePath}:{lineNumber}\n\nINSTRUCTIONS:\n- The comment on line {lineNumber} describes what code to insert AFTER that line\n- Generate ONLY the code to insert (no explanations, no markdown, no comments)\n- Preserve the existing indentation level\n- Do not modify or remove line {lineNumber}\n- Output format: Use the Edit tool to insert the new code after line {lineNumber}\n\nCOMMENT TEXT (this describes what to generate):\n{lineText}\n\nRemember: Output ONLY the Edit tool call, nothing else.";
 
-                ToolWindowPane window = this.package.FindToolWindow(typeof(ClaudeTerminal), 0, true);
-                if (window?.Frame is IVsWindowFrame windowFrame)
+                ToolWindowPane window = this.package.FindToolWindow(typeof(ClaudeTerminal), 0, false);
+                if (window != null && window.Content is ClaudeTerminalControl control)
                 {
-                    //Microsoft.VisualStudio.ErrorHandler.ThrowOnFailure(windowFrame.Show());
-
-                    if (window.Content is ClaudeTerminalControl control)
-                        control.SendToClaude(message, true, false);
+                    control.SendToClaude(message, true);
                 }
             }
             catch (Exception ex)

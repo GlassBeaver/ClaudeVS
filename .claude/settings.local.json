@@ -17,7 +17,14 @@
       "Bash(where:*)",
       "WebSearch",
       "WebFetch(domain:github.com)",
-      "Bash(\"C:/Program Files/Microsoft Visual Studio/18/Insiders/MSBuild/Current/Bin/MSBuild.exe\" \"c:\\Work\\ClaudeVS\\ClaudeVS.csproj\" -t:Build -p:Configuration=Debug -v:minimal)"
+      "Bash(\"C:/Program Files/Microsoft Visual Studio/18/Community/MSBuild/Current/Bin/MSBuild.exe\" \"c:\\Work\\ClaudeVS\\ClaudeVS.csproj\" -t:Build -p:Configuration=Debug -v:minimal)",
+      "Bash(\"C:/Program Files/Microsoft Visual Studio/18/Community/MSBuild/Current/Bin/MSBuild.exe\" \"c:\\Work\\ClaudeVS\\ClaudeVS.csproj\" -t:Build -p:Configuration=Release -v:minimal)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File \"C:\\temp\\build-terminal-release.ps1\")",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File \"C:\\temp\\create-nuget-pkg-release.ps1\")",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File \"C:\\temp\\create-nuget-pkg.ps1\")",
+      "Bash(nuget pack:*)",
+      "Bash(unzip:*)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File \"C:\\temp\\build-terminal-control-release-x64.ps1\")"
     ],
     "deny": [],
     "ask": []

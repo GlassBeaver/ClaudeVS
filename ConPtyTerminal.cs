@@ -418,8 +418,8 @@ namespace ClaudeVS
                 var tSec = new SECURITY_ATTRIBUTES { nLength = securityAttributeSize };
 
                 string claudeCommand = GetClaudeCliPath();
-                string commandLine = $"cmd.exe /c \"{claudeCommand}\"";
-                //string commandLine = $"cmd.exe";
+                //string commandLine = $"cmd.exe /c \"{claudeCommand}\"";
+                string commandLine = $"cmd.exe";
                 //string commandLine = $"powershell.exe";
                 //string commandLine = $"{claudeCommand}";
                 //string commandLine = $"powershell.exe -NoExit -Command \"{claudeCommand}\"";
@@ -461,11 +461,11 @@ namespace ClaudeVS
 
         private void ReadOutputSync(CancellationToken cancellationToken)
         {
-            System.Diagnostics.Debug.WriteLine("ConPtyTerminal.ReadOutputSync: METHOD ENTERED");
+            System.Diagnostics.Trace.WriteLine("ConPtyTerminal.ReadOutputSync: METHOD ENTERED");
 
             try
             {
-                System.Diagnostics.Debug.WriteLine("ConPtyTerminal.ReadOutputSync: Starting SYNCHRONOUS output reading loop");
+                System.Diagnostics.Trace.WriteLine("ConPtyTerminal.ReadOutputSync: Starting SYNCHRONOUS output reading loop");
                 byte[] buffer = new byte[4096];
                 int loopCount = 0;
 
@@ -474,56 +474,56 @@ namespace ClaudeVS
                     loopCount++;
                     if (loopCount == 1)
                     {
-                        System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.ReadOutputSync: First iteration");
+                        System.Diagnostics.Trace.WriteLine($"ConPtyTerminal.ReadOutputSync: First iteration");
                     }
                     if (loopCount % 100 == 0)
                     {
-                        System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.ReadOutputSync: Loop iteration {loopCount}");
+                        System.Diagnostics.Trace.WriteLine($"ConPtyTerminal.ReadOutputSync: Loop iteration {loopCount}");
                     }
 
-                    System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.ReadOutputSync: Calling BLOCKING Read() (iteration {loopCount})");
+                    System.Diagnostics.Trace.WriteLine($"ConPtyTerminal.ReadOutputSync: Calling BLOCKING Read() (iteration {loopCount})");
 
                     int bytesRead = 0;
                     try
                     {
                         bytesRead = outputStream.Read(buffer, 0, buffer.Length);
-                        System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.ReadOutputSync: Read() returned {bytesRead} bytes");
+                        System.Diagnostics.Trace.WriteLine($"ConPtyTerminal.ReadOutputSync: Read() returned {bytesRead} bytes");
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.ReadOutputSync: Read() threw exception: {ex.Message}");
+                        System.Diagnostics.Trace.WriteLine($"ConPtyTerminal.ReadOutputSync: Read() threw exception: {ex.Message}");
                         break;
                     }
 
                     if (bytesRead > 0)
                     {
-                        System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.ReadOutputSync: Read {bytesRead} bytes from output stream");
+                        System.Diagnostics.Trace.WriteLine($"ConPtyTerminal.ReadOutputSync: Read {bytesRead} bytes from output stream");
                         string output = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                        System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.ReadOutputSync: Output text (first 100 chars): {output.Substring(0, Math.Min(100, output.Length))}");
+                        System.Diagnostics.Trace.WriteLine($"ConPtyTerminal.ReadOutputSync: Output text (first 100 chars): {output.Substring(0, Math.Min(100, output.Length))}");
 
                         if (OutputReceived != null)
                         {
-                            System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.ReadOutputSync: Invoking OutputReceived event with {output.Length} characters");
+                            System.Diagnostics.Trace.WriteLine($"ConPtyTerminal.ReadOutputSync: Invoking OutputReceived event with {output.Length} characters");
                             OutputReceived.Invoke(this, output);
                         }
                         else
                         {
-                            System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.ReadOutputSync: WARNING - OutputReceived event has no subscribers!");
+                            System.Diagnostics.Trace.WriteLine($"ConPtyTerminal.ReadOutputSync: WARNING - OutputReceived event has no subscribers!");
                         }
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.ReadOutputSync: Read() returned 0 bytes - end of stream");
+                        System.Diagnostics.Trace.WriteLine($"ConPtyTerminal.ReadOutputSync: Read() returned 0 bytes - end of stream");
                         break;
                     }
                 }
 
-                System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.ReadOutputSync: Output reading loop finished after {loopCount} iterations");
+                System.Diagnostics.Trace.WriteLine($"ConPtyTerminal.ReadOutputSync: Output reading loop finished after {loopCount} iterations");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.ReadOutputSync failed: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                System.Diagnostics.Trace.WriteLine($"ConPtyTerminal.ReadOutputSync failed: {ex.Message}");
+                System.Diagnostics.Trace.WriteLine($"Stack trace: {ex.StackTrace}");
             }
         }
 
@@ -616,31 +616,24 @@ namespace ClaudeVS
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.WriteInput: text='{text}', length={text?.Length}");
-
                 if (!IsRunning || shellProcessHandle == IntPtr.Zero)
                 {
-                    System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.WriteInput: Cannot write - terminal not running");
+                    System.Diagnostics.Trace.WriteLine($"ConPtyTerminal.WriteInput: Cannot write - terminal not running");
                     return;
                 }
 
                 if (inputWritePipe == null || inputWritePipe.IsInvalid || inputWritePipe.IsClosed)
                 {
-                    System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.WriteInput: Cannot write - inputWritePipe is invalid/closed");
+                    System.Diagnostics.Trace.WriteLine($"ConPtyTerminal.WriteInput: Cannot write - inputWritePipe is invalid/closed");
                     return;
                 }
 
                 if (inputStream == null)
-                {
-                    System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.WriteInput: Creating input FileStream");
                     inputStream = new FileStream(inputWritePipe, FileAccess.Write, 1024, false);
-                }
 
                 byte[] buffer = Encoding.UTF8.GetBytes(text);
-                System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.WriteInput: Writing {buffer.Length} bytes to input stream");
                 inputStream.Write(buffer, 0, buffer.Length);
                 inputStream.Flush();
-                System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.WriteInput: Write completed successfully");
             }
             catch (Exception ex)
             {

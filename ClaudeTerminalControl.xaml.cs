@@ -2,8 +2,8 @@ namespace ClaudeVS
 {
     using System;
     using System.IO;
+    using System.Windows;
     using System.Windows.Controls;
-    using System.Windows.Input;
     using System.Windows.Media;
     using EnvDTE;
     using EnvDTE80;
@@ -30,34 +30,7 @@ namespace ClaudeVS
             this.Loaded += ClaudeTerminalControl_Loaded;
             this.Unloaded += ClaudeTerminalControl_Unloaded;
             this.SizeChanged += ClaudeTerminalControl_SizeChanged;
-            this.PreviewKeyDown += ClaudeTerminalControl_PreviewKeyDown;
             System.Diagnostics.Debug.WriteLine("ClaudeTerminalControl constructed");
-        }
-
-        private void ClaudeTerminalControl_PreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Escape)
-            {
-                System.Diagnostics.Debug.WriteLine("ClaudeTerminalControl_PreviewKeyDown: Escape key intercepted, sending to terminal");
-
-                var terminal = claudeTerminal?.Terminal;
-                if (terminal != null && terminal.IsRunning)
-                {
-                    terminal.WriteInput("\x1b");
-                    System.Diagnostics.Debug.WriteLine("ClaudeTerminalControl_PreviewKeyDown: Escape sent successfully");
-                }
-
-                e.Handled = true;
-            }
-        }
-
-        private void TerminalControl_PreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Escape)
-            {
-                System.Diagnostics.Debug.WriteLine("TerminalControl_PreviewKeyDown: Escape key already handled by parent");
-                e.Handled = true;
-            }
         }
 
         private void ClaudeTerminalControl_Loaded(object sender, System.Windows.RoutedEventArgs e)
@@ -106,8 +79,6 @@ namespace ClaudeVS
                 {
                     System.Diagnostics.Debug.WriteLine("Terminal already initialized and connected, nothing to do");
                 }
-
-                TerminalControl.PreviewKeyDown += TerminalControl_PreviewKeyDown;
 
                 System.Diagnostics.Debug.WriteLine("Setting focus to TerminalControl");
                 TerminalControl.Focus();
@@ -175,8 +146,15 @@ namespace ClaudeVS
                 TerminalControl.SetTheme(theme, "Consolas", 10, Colors.Transparent);
 
                 System.Diagnostics.Debug.WriteLine("Setting TerminalControl.Connection");
+
+                terminalConnection.WaitForConnectionReady();
+
                 TerminalControl.Connection = terminalConnection;
                 System.Diagnostics.Debug.WriteLine("TerminalControl.Connection set successfully");
+
+                TerminalControl.GotFocus += (s, e) => System.Diagnostics.Debug.WriteLine("TerminalControl GotFocus");
+                TerminalControl.LostFocus += (s, e) => System.Diagnostics.Debug.WriteLine("TerminalControl LostFocus");
+                TerminalControl.SizeChanged += (s, e) => System.Diagnostics.Debug.WriteLine($"TerminalControl SizeChanged: {TerminalControl.ActualWidth}x{TerminalControl.ActualHeight}");
 
                 System.Diagnostics.Debug.WriteLine("Starting the terminal connection");
                 terminalConnection.Start();
@@ -358,21 +336,32 @@ namespace ClaudeVS
             return null;
         }
 
-        public void SendToClaude(string message, bool bEnter, bool bFocus)
+        public void SendToClaude(string message, bool bEnter)
         {
             try
             {
                 var terminal = claudeTerminal?.Terminal;
                 if (terminal != null)
                     terminal.SendToClaude(message, bEnter);
-
-                if (bFocus)
-                    TerminalControl.Focus();
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"SendToClaude failed: {ex.Message}");
             }
         }
+
+        public void FocusTerminal()
+        {
+            try
+            {
+                TerminalControl.Focus();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"FocusTerminal failed: {ex.Message}");
+            }
+        }
+
     }
+
 }

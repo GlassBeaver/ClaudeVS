@@ -2,6 +2,7 @@ namespace ClaudeVS
 {
     using System;
     using System.Text;
+    using System.Threading;
     using Microsoft.Terminal.Wpf;
 
     /// <summary>
@@ -10,8 +11,7 @@ namespace ClaudeVS
     public class ConPtyTerminalConnection : ITerminalConnection
     {
         private readonly ConPtyTerminal conPtyTerminal;
-        private static DateTime lastEscapeTime = DateTime.MinValue;
-        private static readonly TimeSpan escapeSuppressionWindow = TimeSpan.FromMilliseconds(200);
+        private readonly ManualResetEventSlim connectionReadyEvent = new ManualResetEventSlim(false);
 
         public ConPtyTerminalConnection(ConPtyTerminal terminal)
         {
@@ -22,9 +22,9 @@ namespace ClaudeVS
             conPtyTerminal.OutputReceived += (sender, output) =>
             {
                 System.Diagnostics.Debug.WriteLine($"ConPtyTerminalConnection: OutputReceived event fired, data length: {output?.Length ?? 0}");
-                if (TerminalOutput != null)
+                if (terminalOutputEvent != null)
                 {
-                    TerminalOutput.Invoke(this, new TerminalOutputEventArgs(output));
+                    terminalOutputEvent.Invoke(this, new TerminalOutputEventArgs(output));
                     System.Diagnostics.Debug.WriteLine("TerminalOutput event invoked successfully");
                 }
                 else
@@ -42,39 +42,46 @@ namespace ClaudeVS
             System.Diagnostics.Debug.WriteLine("ConPtyTerminalConnection constructor: event handlers wired up successfully");
         }
 
-        public event EventHandler<TerminalOutputEventArgs> TerminalOutput;
+        public event EventHandler<TerminalOutputEventArgs> TerminalOutput
+        {
+            add
+            {
+                terminalOutputEvent += value;
+                System.Diagnostics.Debug.WriteLine("ConPtyTerminalConnection: TerminalOutput subscriber added, signaling ready");
+                connectionReadyEvent.Set();
+            }
+            remove
+            {
+                terminalOutputEvent -= value;
+            }
+        }
+
+        private event EventHandler<TerminalOutputEventArgs> terminalOutputEvent;
+
         public event EventHandler Closed;
 
-        public static void NotifyEscapeHandled()
+        public void WaitForConnectionReady()
         {
-            lastEscapeTime = DateTime.UtcNow;
-            System.Diagnostics.Debug.WriteLine($"ConPtyTerminalConnection: Escape handled at {lastEscapeTime.Ticks}, suppressing TerminalControl input for {escapeSuppressionWindow.TotalMilliseconds}ms");
+            System.Diagnostics.Debug.WriteLine("ConPtyTerminalConnection: Waiting for TerminalOutput subscriber...");
+            bool ready = connectionReadyEvent.Wait(TimeSpan.FromSeconds(5));
+            if (ready)
+            {
+                System.Diagnostics.Debug.WriteLine("ConPtyTerminalConnection: TerminalOutput subscriber registered, connection ready");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("ConPtyTerminalConnection: WARNING - Timeout waiting for TerminalOutput subscriber!");
+            }
         }
 
         public void WriteInput(string data)
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine($"ConPtyTerminalConnection.WriteInput called with: '{data}' (length: {data?.Length ?? 0})");
-
-                var timeSinceEscape = DateTime.UtcNow - lastEscapeTime;
-                System.Diagnostics.Debug.WriteLine($"ConPtyTerminalConnection.WriteInput: Time since last escape: {timeSinceEscape.TotalMilliseconds}ms (threshold: {escapeSuppressionWindow.TotalMilliseconds}ms)");
-
-                if (timeSinceEscape < escapeSuppressionWindow)
-                {
-                    System.Diagnostics.Debug.WriteLine($"ConPtyTerminalConnection.WriteInput: SUPPRESSING input - within suppression window");
-                    return;
-                }
-
                 if (conPtyTerminal != null && conPtyTerminal.IsRunning)
-                {
                     conPtyTerminal.WriteInput(data);
-                    System.Diagnostics.Debug.WriteLine("Input successfully written to ConPTY");
-                }
                 else
-                {
                     System.Diagnostics.Debug.WriteLine($"Cannot write input: conPtyTerminal is null={conPtyTerminal == null}, IsRunning={conPtyTerminal?.IsRunning}");
-                }
             }
             catch (Exception ex)
             {
