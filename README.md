@@ -1,5 +1,8 @@
 # ClaudeVS
 
+Free on the Visual Studio Marketplace:
+https://marketplace.visualstudio.com/items?itemName=GlassBeaver.ClaudeVS
+
 Simple integration of Claude Code CLI into Visual Studio 2026 and 2022. Works by launching an integrated console window with claude in it, which means Claude Code CLI retains all of its command line functionality and look & feel while VS is able to communicate with it.
 Currently, two actions are implemented:
 * Send active file path & line number to claude
