@@ -213,6 +213,7 @@ namespace ClaudeVS
 
         public ushort Rows { get; set; } = 30;
         public ushort Columns { get; set; } = 120;
+        public string Command { get; set; } = "claude";
         public bool IsRunning { get; private set; }
 
         public ConPtyTerminal(ushort rows = 30, ushort columns = 120)
@@ -417,12 +418,30 @@ namespace ClaudeVS
                 var pSec = new SECURITY_ATTRIBUTES { nLength = securityAttributeSize };
                 var tSec = new SECURITY_ATTRIBUTES { nLength = securityAttributeSize };
 
-                string claudeCommand = GetClaudeCliPath();
-                string commandLine = $"cmd.exe /c \"{claudeCommand}\"";
-                //string commandLine = $"cmd.exe";
-                //string commandLine = $"powershell.exe";
-                //string commandLine = $"{claudeCommand}";
-                //string commandLine = $"powershell.exe -NoExit -Command \"{claudeCommand}\"";
+                string cliCommand = string.IsNullOrWhiteSpace(Command) ? "claude" : Command.Trim();
+                if (string.Equals(cliCommand, "claude", StringComparison.OrdinalIgnoreCase))
+                {
+                    cliCommand = GetClaudeCliPath();
+                }
+                else if (string.Equals(cliCommand, "copilot", StringComparison.OrdinalIgnoreCase))
+				{
+					cliCommand = GetCopilotCliPath();
+				}
+
+				bool requiresCmd = string.IsNullOrWhiteSpace(Path.GetExtension(cliCommand)) ||
+                        cliCommand.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase) ||
+                        cliCommand.EndsWith(".bat", StringComparison.OrdinalIgnoreCase);
+
+                string commandLine;
+                if (requiresCmd)
+                {
+                    string quotedCliCommand = cliCommand.Contains("\"") ? cliCommand : $"\"{cliCommand}\"";
+                    commandLine = $"cmd.exe /c {quotedCliCommand}";
+                }
+                else
+                {
+                    commandLine = cliCommand;
+                }
 
                 success = CreateProcessW(
                     null,
@@ -712,6 +731,48 @@ namespace ClaudeVS
                 System.Diagnostics.Debug.WriteLine($"ConPtyTerminal.Resize failed: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
             }
+        }
+
+        private string GetCopilotCliPath()
+        {
+            string npmPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "npm",
+                "copilot.cmd");
+            if (File.Exists(npmPath))
+            {
+                return npmPath;
+            }
+
+            string pathEnv = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+            foreach (string dir in pathEnv.Split(Path.PathSeparator))
+            {
+                string copilotPath = Path.Combine(dir, "copilot.cmd");
+                if (File.Exists(copilotPath))
+                {
+                    return copilotPath;
+                }
+
+                copilotPath = Path.Combine(dir, "copilot");
+                if (File.Exists(copilotPath))
+                {
+                    return copilotPath;
+                }
+
+                copilotPath = Path.Combine(dir, "copilot-code");
+                if (File.Exists(copilotPath))
+                {
+                    return copilotPath;
+                }
+
+                copilotPath = Path.Combine(dir, "copilot-code.cmd");
+                if (File.Exists(copilotPath))
+                {
+                    return copilotPath;
+                }
+            }
+
+            return "copilot";
         }
 
         private string GetClaudeCliPath()

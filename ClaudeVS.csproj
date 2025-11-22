@@ -54,6 +54,9 @@
     <Compile Include="ClaudeTerminalControl.xaml.cs">
       <DependentUpon>ClaudeTerminalControl.xaml</DependentUpon>
     </Compile>
+    <Compile Include="CommandInputDialog.xaml.cs">
+      <DependentUpon>CommandInputDialog.xaml</DependentUpon>
+    </Compile>
     <Compile Include="ConPtyTerminal.cs" />
     <Compile Include="ConPtyTerminalConnection.cs" />
   </ItemGroup>
@@ -64,6 +67,10 @@
   </ItemGroup>
   <ItemGroup>
     <Page Include="ClaudeTerminalControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="CommandInputDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

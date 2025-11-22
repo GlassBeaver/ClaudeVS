@@ -19,6 +19,8 @@ namespace ClaudeVS
         private DTE2 dte;
         private SolutionEvents solutionEvents;
         private bool isInitialized;
+        private string currentCommand = "claude";
+        private bool needsResizeAfterOutput = false;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ClaudeTerminalControl"/> class.
@@ -99,6 +101,7 @@ namespace ClaudeVS
 
                 System.Diagnostics.Debug.WriteLine("Creating new ConPtyTerminal instance");
                 var conPtyTerminal = new ConPtyTerminal(rows: 30, columns: 120);
+                conPtyTerminal.Command = currentCommand;
                 System.Diagnostics.Debug.WriteLine("ConPtyTerminal instance created successfully");
 
                 string workingDir = GetActiveProjectDirectory();
@@ -126,6 +129,8 @@ namespace ClaudeVS
 
                 System.Diagnostics.Debug.WriteLine("Creating ConPtyTerminalConnection");
                 var terminalConnection = new ConPtyTerminalConnection(conPtyTerminal);
+
+                conPtyTerminal.OutputReceived += ConPtyTerminal_OutputReceived;
 
                 claudeTerminal?.SetTerminalInstances(conPtyTerminal, terminalConnection);
 
@@ -159,6 +164,8 @@ namespace ClaudeVS
                 System.Diagnostics.Debug.WriteLine("Starting the terminal connection");
                 terminalConnection.Start();
                 System.Diagnostics.Debug.WriteLine("Terminal connection started");
+
+                needsResizeAfterOutput = true;
             }
             catch (Exception ex)
             {
@@ -359,6 +366,62 @@ namespace ClaudeVS
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"FocusTerminal failed: {ex.Message}");
+            }
+        }
+
+        private void ConPtyTerminal_OutputReceived(object sender, string e)
+        {
+            if (needsResizeAfterOutput)
+            {
+                needsResizeAfterOutput = false;
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        System.Diagnostics.Debug.WriteLine("First output received after command change, forcing terminal redraw via TriggerResize");
+                        if (TerminalControl.ActualHeight > 0 && TerminalControl.ActualWidth > 0)
+                        {
+                            var size = new Size(TerminalControl.ActualWidth, TerminalControl.ActualHeight);
+                            TerminalControl.TriggerResize(size);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"ConPtyTerminal_OutputReceived resize error: {ex.Message}");
+                    }
+                }), System.Windows.Threading.DispatcherPriority.Render);
+            }
+        }
+
+        private void ChangeCommandButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var dialog = new CommandInputDialog(currentCommand);
+                dialog.Owner = Application.Current?.MainWindow;
+                if (dialog.ShowDialog() == true)
+                {
+                    string newCommand = dialog.CommandName?.Trim();
+                    if (!string.IsNullOrWhiteSpace(newCommand) && !string.Equals(newCommand, currentCommand, StringComparison.OrdinalIgnoreCase))
+                    {
+                        currentCommand = newCommand;
+                        needsResizeAfterOutput = true;
+                        string projectDir = GetActiveProjectDirectory();
+                        if (!string.IsNullOrEmpty(projectDir))
+                        {
+                            RestartClaudeWithWorkingDirectory(projectDir);
+                        }
+                        else
+                        {
+                            StopClaude();
+                            InitializeConPtyTerminal();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ChangeCommandButton_Click error: {ex.Message}");
             }
         }
 
