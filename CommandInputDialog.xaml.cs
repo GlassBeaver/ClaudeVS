@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 
 namespace ClaudeVS
 {
@@ -12,6 +13,15 @@ namespace ClaudeVS
             CommandTextBox.Text = defaultCommand;
             CommandTextBox.Focus();
             CommandTextBox.SelectAll();
+        }
+
+        private void CommandPresetCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (CommandPresetCombo.SelectedItem is ComboBoxItem selectedItem)
+            {
+                string value = selectedItem.Tag?.ToString() ?? selectedItem.Content.ToString();
+                CommandTextBox.Text = value;
+            }
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)

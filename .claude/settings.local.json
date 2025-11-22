@@ -24,7 +24,8 @@
       "Bash(powershell.exe -ExecutionPolicy Bypass -File \"C:\\temp\\create-nuget-pkg.ps1\")",
       "Bash(nuget pack:*)",
       "Bash(unzip:*)",
-      "Bash(powershell.exe -ExecutionPolicy Bypass -File \"C:\\temp\\build-terminal-control-release-x64.ps1\")"
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File \"C:\\temp\\build-terminal-control-release-x64.ps1\")",
+      "WebFetch(domain:gist.github.com)"
     ],
     "deny": [],
     "ask": []

@@ -419,16 +419,20 @@ namespace ClaudeVS
                 var tSec = new SECURITY_ATTRIBUTES { nLength = securityAttributeSize };
 
                 string cliCommand = string.IsNullOrWhiteSpace(Command) ? "claude" : Command.Trim();
+                bool isSpecialCommand = false;
                 if (string.Equals(cliCommand, "claude", StringComparison.OrdinalIgnoreCase))
                 {
                     cliCommand = GetClaudeCliPath();
+                    isSpecialCommand = true;
                 }
                 else if (string.Equals(cliCommand, "copilot", StringComparison.OrdinalIgnoreCase))
 				{
 					cliCommand = GetCopilotCliPath();
+                    isSpecialCommand = true;
 				}
 
-				bool requiresCmd = string.IsNullOrWhiteSpace(Path.GetExtension(cliCommand)) ||
+				bool requiresCmd = !isSpecialCommand ||
+                        string.IsNullOrWhiteSpace(Path.GetExtension(cliCommand)) ||
                         cliCommand.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase) ||
                         cliCommand.EndsWith(".bat", StringComparison.OrdinalIgnoreCase);
 
