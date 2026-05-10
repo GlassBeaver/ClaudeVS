@@ -15,7 +15,8 @@ namespace ClaudeVS
         private const short DefaultFontSize = 10;
         private const string ThemeKey = "Theme";
         private const string DefaultTheme = "System";
-        private const string QuickSwitchPresetsKey = "QuickSwitchPresets";
+        private const string QuickSwitchClaudePresetsKey = "QuickSwitchPresets";
+        private const string QuickSwitchCodexPresetsKey = "QuickSwitchPresetsCodex";
 
         public static string GetLastCommand()
         {
@@ -164,7 +165,7 @@ namespace ClaudeVS
             }
         }
 
-        public static void LoadQuickSwitchPresets(int[] models, bool[] thinking, int[] effort)
+        public static void LoadQuickSwitchPresets(string agent, int[] models, bool[] thinking, int[] effort, int maxModelCount, int maxEffortCount)
         {
             try
             {
@@ -177,23 +178,25 @@ namespace ClaudeVS
                     return;
                 }
 
-                if (!userSettingsStore.PropertyExists(CollectionPath, QuickSwitchPresetsKey))
+                string key = GetQuickSwitchPresetsKey(agent);
+
+                if (!userSettingsStore.PropertyExists(CollectionPath, key))
                 {
                     return;
                 }
 
-                string presets = userSettingsStore.GetString(CollectionPath, QuickSwitchPresetsKey);
+                string presets = userSettingsStore.GetString(CollectionPath, key);
                 string[] parts = presets.Split('|');
                 for (int i = 0; i < Math.Min(parts.Length, 4); i++)
                 {
                     string[] values = parts[i].Split(',');
                     if (values.Length == 3)
                     {
-                        if (int.TryParse(values[0], out int m) && m >= 0 && m < 3)
+                        if (int.TryParse(values[0], out int m) && m >= 0 && m < maxModelCount)
                             models[i] = m;
                         if (bool.TryParse(values[1], out bool t))
                             thinking[i] = t;
-                        if (int.TryParse(values[2], out int e) && e >= 0 && e < 3)
+                        if (int.TryParse(values[2], out int e) && e >= 0 && e < maxEffortCount)
                             effort[i] = e;
                     }
                 }
@@ -204,7 +207,7 @@ namespace ClaudeVS
             }
         }
 
-        public static void SaveQuickSwitchPresets(int[] models, bool[] thinking, int[] effort)
+        public static void SaveQuickSwitchPresets(string agent, int[] models, bool[] thinking, int[] effort)
         {
             try
             {
@@ -217,13 +220,19 @@ namespace ClaudeVS
                     userSettingsStore.CreateCollection(CollectionPath);
                 }
 
+                string key = GetQuickSwitchPresetsKey(agent);
                 string presets = $"{models[0]},{thinking[0]},{effort[0]}|{models[1]},{thinking[1]},{effort[1]}|{models[2]},{thinking[2]},{effort[2]}|{models[3]},{thinking[3]},{effort[3]}";
-                userSettingsStore.SetString(CollectionPath, QuickSwitchPresetsKey, presets);
+                userSettingsStore.SetString(CollectionPath, key, presets);
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Exception in SaveQuickSwitchPresets: {ex}");
             }
+        }
+
+        private static string GetQuickSwitchPresetsKey(string agent)
+        {
+            return string.Equals(agent, "Codex", StringComparison.OrdinalIgnoreCase) ? QuickSwitchCodexPresetsKey : QuickSwitchClaudePresetsKey;
         }
     }
 }

@@ -57,6 +57,13 @@ namespace ClaudeVS
 			public int Y;
 		}
 
+		private enum QuickSwitchAgentType
+		{
+			None,
+			Claude,
+			Codex,
+		}
+
 		private class AgentTab
 		{
 			public string Title;
@@ -92,12 +99,18 @@ namespace ClaudeVS
 		private AgentTab lastUserSelectedTab;
 		private Popup quickSwitchPopup;
 		private bool quickSwitchInProgress;
-		private int iTargetModel;
-		private bool bThinking;
-		private int iTargetEffort;
-		private int[] quickSwitchPresetModel = { 0, 1, 2, 2 };
-		private bool[] quickSwitchPresetThinking = { false, false, false, false };
-		private int[] quickSwitchPresetEffort = { 0, 0, 0, 0 };
+		private readonly string[] quickSwitchClaudeModels = { "Opus 4.6", "Sonnet 4.6", "Haiku 4.5" };
+		private readonly string[] quickSwitchClaudeModelIds = { "claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5" };
+		private readonly string[] quickSwitchClaudeEfforts = { "Low", "Medium", "High", "Max", "Auto" };
+		private readonly string[] quickSwitchClaudeEffortIds = { "low", "medium", "high", "max", "auto" };
+		private readonly string[] quickSwitchCodexModels = { "gpt-5.4", "gpt-5.2-codex", "gpt-5.1-codex-max", "gpt-5.4-mini", "gpt-5.3-codex", "gpt-5.2", "gpt-5.1-codex-mini" };
+		private readonly string[] quickSwitchCodexEfforts = { "low", "medium", "high", "xhigh" };
+		private int[] quickSwitchClaudePresetModel = { 0, 1, 2, 2 };
+		private bool[] quickSwitchClaudePresetThinking = { false, false, false, false };
+		private int[] quickSwitchClaudePresetEffort = { 0, 0, 0, 0 };
+		private int[] quickSwitchCodexPresetModel = { 0, 1, 2, 3 };
+		private bool[] quickSwitchCodexPresetThinking = { false, false, false, false };
+		private int[] quickSwitchCodexPresetEffort = { 1, 1, 1, 1 };
 		private bool eventsInitialized;
 
 		/// <summary>
@@ -121,7 +134,8 @@ namespace ClaudeVS
 				currentCommand = SettingsManager.GetLastCommand();
 				currentFontSize = SettingsManager.GetFontSize();
 				currentTheme = SettingsManager.GetTheme();
-				SettingsManager.LoadQuickSwitchPresets(quickSwitchPresetModel, quickSwitchPresetThinking, quickSwitchPresetEffort);
+				SettingsManager.LoadQuickSwitchPresets("Claude", quickSwitchClaudePresetModel, quickSwitchClaudePresetThinking, quickSwitchClaudePresetEffort, quickSwitchClaudeModels.Length, quickSwitchClaudeEfforts.Length);
+				SettingsManager.LoadQuickSwitchPresets("Codex", quickSwitchCodexPresetModel, quickSwitchCodexPresetThinking, quickSwitchCodexPresetEffort, quickSwitchCodexModels.Length, quickSwitchCodexEfforts.Length);
 
 				if (agentTabs.Count == 0)
 				{
@@ -640,15 +654,75 @@ namespace ClaudeVS
 			InitializeConPtyTerminal(tab);
 		}
 
-		private bool IsClaudeAgent()
+		private QuickSwitchAgentType GetQuickSwitchAgentType()
 		{
 			string cmd = activeTab?.Command ?? currentCommand;
-			return cmd != null && cmd.IndexOf("claude", StringComparison.OrdinalIgnoreCase) >= 0;
+			if (cmd == null)
+			{
+				return QuickSwitchAgentType.None;
+			}
+
+			if (cmd.IndexOf("claude", StringComparison.OrdinalIgnoreCase) >= 0)
+			{
+				return QuickSwitchAgentType.Claude;
+			}
+
+			if (cmd.IndexOf("codex", StringComparison.OrdinalIgnoreCase) >= 0)
+			{
+				return QuickSwitchAgentType.Codex;
+			}
+
+			return QuickSwitchAgentType.None;
+		}
+
+		private void GetQuickSwitchPresetState(QuickSwitchAgentType agentType, out int[] models, out bool[] thinking, out int[] efforts)
+		{
+			if (agentType == QuickSwitchAgentType.Codex)
+			{
+				models = quickSwitchCodexPresetModel;
+				thinking = quickSwitchCodexPresetThinking;
+				efforts = quickSwitchCodexPresetEffort;
+				return;
+			}
+
+			models = quickSwitchClaudePresetModel;
+			thinking = quickSwitchClaudePresetThinking;
+			efforts = quickSwitchClaudePresetEffort;
+		}
+
+		private string[] GetQuickSwitchModels(QuickSwitchAgentType agentType)
+		{
+			return agentType == QuickSwitchAgentType.Codex ? quickSwitchCodexModels : quickSwitchClaudeModels;
+		}
+
+		private string[] GetQuickSwitchEfforts(QuickSwitchAgentType agentType)
+		{
+			return agentType == QuickSwitchAgentType.Codex ? quickSwitchCodexEfforts : quickSwitchClaudeEfforts;
+		}
+
+		private string GetQuickSwitchAgentKey(QuickSwitchAgentType agentType)
+		{
+			return agentType == QuickSwitchAgentType.Codex ? "Codex" : "Claude";
+		}
+
+		private bool QuickSwitchSupportsThinking(QuickSwitchAgentType agentType)
+		{
+			return agentType == QuickSwitchAgentType.Claude;
+		}
+
+		private bool QuickSwitchShowsEffort(QuickSwitchAgentType agentType, int modelIndex)
+		{
+			if (agentType == QuickSwitchAgentType.Claude)
+			{
+				return modelIndex == 0;
+			}
+
+			return agentType == QuickSwitchAgentType.Codex;
 		}
 
 		private void UpdateQuickSwitchVisibility()
 		{
-			QuickSwitchButton.Visibility = IsClaudeAgent() ? Visibility.Visible : Visibility.Collapsed;
+			QuickSwitchButton.Visibility = GetQuickSwitchAgentType() == QuickSwitchAgentType.None ? Visibility.Collapsed : Visibility.Visible;
 		}
 
 		private void SetActiveTab(AgentTab tab)
@@ -694,6 +768,7 @@ namespace ClaudeVS
 					}
 
 					EnsureTabInitialized(selectedTab);
+					UpdateQuickSwitchVisibility();
 					FocusTerminal();
 				}
 			}
@@ -716,6 +791,8 @@ namespace ClaudeVS
 				AgentTabs.SelectedItem = tabToRestore.TabItem;
 				activeTab = tabToRestore;
 			}
+
+			UpdateQuickSwitchVisibility();
 
 			if (activeTab?.TerminalControl != null)
 			{
@@ -1140,11 +1217,23 @@ namespace ClaudeVS
 			{
 				if (activeTab?.Terminal != null && activeTab.Terminal.IsRunning)
 				{
+					var agentType = GetQuickSwitchAgentType();
+					if (agentType == QuickSwitchAgentType.None)
+					{
+						return;
+					}
+
 					if (quickSwitchPopup != null && quickSwitchPopup.IsOpen)
 					{
 						quickSwitchPopup.IsOpen = false;
 						return;
 					}
+
+					GetQuickSwitchPresetState(agentType, out var presetModels, out var presetThinking, out var presetEfforts);
+					string[] models = GetQuickSwitchModels(agentType);
+					string[] efforts = GetQuickSwitchEfforts(agentType);
+					string agentKey = GetQuickSwitchAgentKey(agentType);
+					bool supportsThinking = QuickSwitchSupportsThinking(agentType);
 
 					string effectiveTheme = currentTheme;
 					if (effectiveTheme == "System")
@@ -1195,6 +1284,7 @@ namespace ClaudeVS
 
 					var hThinking = new TextBlock { Text = "Thinking", Foreground = fgBrush, Margin = headerMargin, FontWeight = FontWeights.Bold };
 					Grid.SetRow(hThinking, 0); Grid.SetColumn(hThinking, 2);
+					hThinking.Visibility = supportsThinking ? Visibility.Visible : Visibility.Collapsed;
 					grid.Children.Add(hThinking);
 
 					var hEffort = new TextBlock { Text = "Effort", Foreground = fgBrush, Margin = headerMargin, FontWeight = FontWeights.Bold };
@@ -1232,9 +1322,6 @@ namespace ClaudeVS
 					}
 					catch { }
 
-					string[] models = { "Opus 4.6", "Sonnet 4.6", "Haiku 4.5" };
-					string[] efforts = { "Low", "Medium", "High", "Max", "Auto" };
-
 					for (int row = 0; row < 4; row++)
 					{
 						int capturedRow = row;
@@ -1244,47 +1331,48 @@ namespace ClaudeVS
 						var modelCombo = new ComboBox { Margin = cellMargin, MinWidth = 100 };
 						foreach (var m in models)
 							modelCombo.Items.Add(m);
-						modelCombo.SelectedIndex = quickSwitchPresetModel[row];
+						modelCombo.SelectedIndex = presetModels[row];
 
 						var thinkingCheck = new CheckBox
 						{
 							Margin = cellMargin,
 							VerticalAlignment = VerticalAlignment.Center,
 							HorizontalAlignment = HorizontalAlignment.Center,
-							IsChecked = quickSwitchPresetThinking[row]
+							IsChecked = presetThinking[row],
+							Visibility = supportsThinking ? Visibility.Visible : Visibility.Collapsed
 						};
 
 						var effortCombo = new ComboBox { Margin = cellMargin, MinWidth = 80 };
 						foreach (var ef in efforts)
 							effortCombo.Items.Add(ef);
-						effortCombo.SelectedIndex = quickSwitchPresetEffort[row];
-						effortCombo.Visibility = modelCombo.SelectedIndex == 0 ? Visibility.Visible : Visibility.Hidden;
+						effortCombo.SelectedIndex = presetEfforts[row];
+						effortCombo.Visibility = QuickSwitchShowsEffort(agentType, modelCombo.SelectedIndex) ? Visibility.Visible : Visibility.Hidden;
 
 						var capturedEffortCombo = effortCombo;
 						var capturedModelCombo = modelCombo;
 						modelCombo.SelectionChanged += (s, ev) =>
 						{
-							capturedEffortCombo.Visibility = capturedModelCombo.SelectedIndex == 0 ? Visibility.Visible : Visibility.Hidden;
-							quickSwitchPresetModel[capturedRow] = capturedModelCombo.SelectedIndex;
-							SettingsManager.SaveQuickSwitchPresets(quickSwitchPresetModel, quickSwitchPresetThinking, quickSwitchPresetEffort);
+							capturedEffortCombo.Visibility = QuickSwitchShowsEffort(agentType, capturedModelCombo.SelectedIndex) ? Visibility.Visible : Visibility.Hidden;
+							presetModels[capturedRow] = capturedModelCombo.SelectedIndex;
+							SettingsManager.SaveQuickSwitchPresets(agentKey, presetModels, presetThinking, presetEfforts);
 						};
 
 						var capturedThinkingCheck = thinkingCheck;
 						thinkingCheck.Checked += (s, ev) =>
 						{
-							quickSwitchPresetThinking[capturedRow] = true;
-							SettingsManager.SaveQuickSwitchPresets(quickSwitchPresetModel, quickSwitchPresetThinking, quickSwitchPresetEffort);
+							presetThinking[capturedRow] = true;
+							SettingsManager.SaveQuickSwitchPresets(agentKey, presetModels, presetThinking, presetEfforts);
 						};
 						thinkingCheck.Unchecked += (s, ev) =>
 						{
-							quickSwitchPresetThinking[capturedRow] = false;
-							SettingsManager.SaveQuickSwitchPresets(quickSwitchPresetModel, quickSwitchPresetThinking, quickSwitchPresetEffort);
+							presetThinking[capturedRow] = false;
+							SettingsManager.SaveQuickSwitchPresets(agentKey, presetModels, presetThinking, presetEfforts);
 						};
 
 						effortCombo.SelectionChanged += (s, ev) =>
 						{
-							quickSwitchPresetEffort[capturedRow] = capturedEffortCombo.SelectedIndex;
-							SettingsManager.SaveQuickSwitchPresets(quickSwitchPresetModel, quickSwitchPresetThinking, quickSwitchPresetEffort);
+							presetEfforts[capturedRow] = capturedEffortCombo.SelectedIndex;
+							SettingsManager.SaveQuickSwitchPresets(agentKey, presetModels, presetThinking, presetEfforts);
 						};
 						var selectButton = new Button
 						{
@@ -1295,9 +1383,10 @@ namespace ClaudeVS
 						};
 						selectButton.Click += (s, ev) =>
 						{
-							quickSwitchPresetModel[capturedRow] = capturedModelCombo.SelectedIndex;
-							quickSwitchPresetThinking[capturedRow] = capturedThinkingCheck.IsChecked == true;
-							quickSwitchPresetEffort[capturedRow] = capturedEffortCombo.SelectedIndex;
+							presetModels[capturedRow] = capturedModelCombo.SelectedIndex;
+							presetThinking[capturedRow] = capturedThinkingCheck.IsChecked == true;
+							presetEfforts[capturedRow] = capturedEffortCombo.SelectedIndex;
+							SettingsManager.SaveQuickSwitchPresets(agentKey, presetModels, presetThinking, presetEfforts);
 							popup.IsOpen = false;
 							ExecuteQuickSwitch(capturedRow);
 						};
@@ -1341,61 +1430,75 @@ namespace ClaudeVS
 
 		public void ExecuteQuickSwitch(int presetIndex)
 		{
-			if (!IsClaudeAgent()) return;
+			var agentType = GetQuickSwitchAgentType();
+			if (agentType == QuickSwitchAgentType.None) return;
 			if (quickSwitchInProgress) return;
 			if (presetIndex < 0 || presetIndex > 3) return;
 			if (activeTab?.Terminal == null || !activeTab.Terminal.IsRunning) return;
 			quickSwitchInProgress = true;
 
-			iTargetModel = quickSwitchPresetModel[presetIndex];
-			bThinking = quickSwitchPresetThinking[presetIndex];
-			iTargetEffort = quickSwitchPresetEffort[presetIndex];
+			GetQuickSwitchPresetState(agentType, out var presetModels, out var presetThinking, out var presetEfforts);
+			int targetModel = presetModels[presetIndex];
+			bool thinking = presetThinking[presetIndex];
+			int targetEffort = presetEfforts[presetIndex];
 
-			SettingsManager.SaveQuickSwitchPresets(quickSwitchPresetModel, quickSwitchPresetThinking, quickSwitchPresetEffort);
+			SettingsManager.SaveQuickSwitchPresets(GetQuickSwitchAgentKey(agentType), presetModels, presetThinking, presetEfforts);
 
 			var terminal = activeTab.Terminal;
 			System.Threading.Tasks.Task.Run(async () =>
 			{
-				terminal.WriteInput("\x1bt");
-				await System.Threading.Tasks.Task.Delay(200);
-				terminal.WriteInput(bThinking ? "1" : "2");
-				await System.Threading.Tasks.Task.Delay(200);
-
-				string thinkingBuffer = null;
-				await Dispatcher.InvokeAsync(() =>
+				try
 				{
-					thinkingBuffer = activeTab?.TerminalControl?.ReadEntireBuffer();
-				});
-				if (thinkingBuffer != null && thinkingBuffer.Contains("Do you want to proceed?"))
-				{
-					terminal.WriteInput("\r");
-					await System.Threading.Tasks.Task.Delay(200);
-				}
-
-				string[] modelIds = { "claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5" };
-				terminal.WriteInput("/model " + modelIds[iTargetModel]);
-				await System.Threading.Tasks.Task.Delay(200);
-				terminal.WriteInput("\r");
-
-				if (iTargetModel == 0)
-				{
-					string[] effortLevels = { "low", "medium", "high", "max", "auto" };
-					for (int wait = 0; wait < 50; wait++)
+					if (agentType == QuickSwitchAgentType.Codex)
 					{
-						await System.Threading.Tasks.Task.Delay(200);
-						string buf = null;
-						await Dispatcher.InvokeAsync(() =>
-						{
-							buf = activeTab?.TerminalControl?.ReadEntireBuffer();
-						});
-						if (buf != null && buf.Contains("─────\r\n> \r\n─────") && buf.Contains("⎿  Set model to "))
-							break;
+						terminal.WriteInput("/model " + quickSwitchCodexModels[targetModel] + " " + quickSwitchCodexEfforts[targetEffort]);
+						await System.Threading.Tasks.Task.Delay(300);
+						terminal.WriteInput("\r");
+						return;
 					}
-					terminal.WriteInput("/effort " + effortLevels[iTargetEffort]);
+
+					terminal.WriteInput("\x1bt");
+					await System.Threading.Tasks.Task.Delay(200);
+					terminal.WriteInput(thinking ? "1" : "2");
+					await System.Threading.Tasks.Task.Delay(200);
+
+					string thinkingBuffer = null;
+					await Dispatcher.InvokeAsync(() =>
+					{
+						thinkingBuffer = activeTab?.TerminalControl?.ReadEntireBuffer();
+					});
+					if (thinkingBuffer != null && thinkingBuffer.Contains("Do you want to proceed?"))
+					{
+						terminal.WriteInput("\r");
+						await System.Threading.Tasks.Task.Delay(200);
+					}
+
+					terminal.WriteInput("/model " + quickSwitchClaudeModelIds[targetModel]);
 					await System.Threading.Tasks.Task.Delay(200);
 					terminal.WriteInput("\r");
+
+					if (targetModel == 0)
+					{
+						for (int wait = 0; wait < 50; wait++)
+						{
+							await System.Threading.Tasks.Task.Delay(200);
+							string buf = null;
+							await Dispatcher.InvokeAsync(() =>
+							{
+								buf = activeTab?.TerminalControl?.ReadEntireBuffer();
+							});
+							if (buf != null && buf.Contains("─────\r\n> \r\n─────") && buf.Contains("⎿  Set model to "))
+								break;
+						}
+						terminal.WriteInput("/effort " + quickSwitchClaudeEffortIds[targetEffort]);
+						await System.Threading.Tasks.Task.Delay(200);
+						terminal.WriteInput("\r");
+					}
 				}
-				quickSwitchInProgress = false;
+				finally
+				{
+					quickSwitchInProgress = false;
+				}
 			});
 		}
 
