@@ -394,7 +394,7 @@
                     Click="QuickSwitchButton_Click"/>
 
             <Button x:Name="McpButton"
-                    Content="MCP"
+                    Content="🔌 MCP"
                     Padding="4,2"
                     FontSize="12"
                     Margin="0"
