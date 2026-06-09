@@ -445,6 +445,8 @@ namespace ClaudeVS
 			try
 			{
 				byte[] buffer = new byte[4096];
+				char[] charBuffer = new char[Encoding.UTF8.GetMaxCharCount(buffer.Length)];
+				Decoder decoder = Encoding.UTF8.GetDecoder();
 				int loopCount = 0;
 
 				while (!cancellationToken.IsCancellationRequested && IsRunning && outputStream != null)
@@ -464,15 +466,20 @@ namespace ClaudeVS
 
 					if (bytesRead > 0)
 					{
-						string output = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+						int charsRead = decoder.GetChars(buffer, 0, bytesRead, charBuffer, 0, false);
 
-						if (OutputReceived != null)
+						if (charsRead > 0 && OutputReceived != null)
 						{
-							OutputReceived.Invoke(this, output);
+							OutputReceived.Invoke(this, new string(charBuffer, 0, charsRead));
 						}
 					}
 					else
 					{
+						int charsRead = decoder.GetChars(buffer, 0, 0, charBuffer, 0, true);
+						if (charsRead > 0 && OutputReceived != null)
+						{
+							OutputReceived.Invoke(this, new string(charBuffer, 0, charsRead));
+						}
 						break;
 					}
 				}
@@ -488,6 +495,8 @@ namespace ClaudeVS
 			try
 			{
 				byte[] buffer = new byte[4096];
+				char[] charBuffer = new char[Encoding.UTF8.GetMaxCharCount(buffer.Length)];
+				Decoder decoder = Encoding.UTF8.GetDecoder();
 				int loopCount = 0;
 
 				while (!cancellationToken.IsCancellationRequested && IsRunning && outputStream != null)
@@ -510,15 +519,20 @@ namespace ClaudeVS
 
 					if (bytesRead > 0)
 					{
-						string output = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+						int charsRead = decoder.GetChars(buffer, 0, bytesRead, charBuffer, 0, false);
 
-						if (OutputReceived != null)
+						if (charsRead > 0 && OutputReceived != null)
 						{
-							OutputReceived.Invoke(this, output);
+							OutputReceived.Invoke(this, new string(charBuffer, 0, charsRead));
 						}
 					}
 					else if (!IsRunning)
 					{
+						int charsRead = decoder.GetChars(buffer, 0, 0, charBuffer, 0, true);
+						if (charsRead > 0 && OutputReceived != null)
+						{
+							OutputReceived.Invoke(this, new string(charBuffer, 0, charsRead));
+						}
 						break;
 					}
 					else
