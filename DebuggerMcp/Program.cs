@@ -16,6 +16,7 @@ namespace ClaudeVS.DebuggerMcp
 		private static readonly Encoding Utf8 = new UTF8Encoding(false);
 		private static readonly Encoding Ascii = Encoding.ASCII;
 		private static readonly object OutputLock = new object();
+		private const int BridgeTimeoutMs = 5000;
 		private static int? forcedVsPid;
 		private static string forcedVsPidError;
 
@@ -141,7 +142,9 @@ namespace ClaudeVS.DebuggerMcp
 		{
 			using (NamedPipeClientStream pipe = new NamedPipeClientStream(".", instance.PipeName, PipeDirection.InOut, PipeOptions.None, TokenImpersonationLevel.Impersonation))
 			{
-				pipe.Connect(5000);
+				pipe.Connect(BridgeTimeoutMs);
+				pipe.ReadTimeout = BridgeTimeoutMs;
+				pipe.WriteTimeout = BridgeTimeoutMs;
 				using (StreamReader reader = new StreamReader(pipe, Utf8))
 				using (StreamWriter writer = new StreamWriter(pipe, Utf8) { AutoFlush = true })
 				{
@@ -277,7 +280,7 @@ namespace ClaudeVS.DebuggerMcp
 					Property("maxFrames", "integer", "Maximum number of frames to return."))),
 				Tool("debugger_locals", "Return bounded local variables for the current or requested stack frame.", ObjectSchema(
 					Property("frameIndex", "integer", "Zero-based stack frame index."),
-					Property("maxDepth", "integer", "Maximum nested child depth."),
+					Property("maxDepth", "integer", "Maximum nested child depth. Defaults to 0."),
 					Property("maxChildren", "integer", "Maximum children per expression."))),
 				Tool("debugger_evaluate", "Evaluate a read-only expression in the current stack frame.", ObjectSchema(new[] { "expression" },
 					Property("expression", "string", "Expression to evaluate."),

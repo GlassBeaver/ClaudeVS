@@ -23,6 +23,7 @@ namespace ClaudeVS
 	using Microsoft.VisualStudio.Shell;
 	using Microsoft.VisualStudio.Shell.Interop;
 	using Process = System.Diagnostics.Process;
+	using Stopwatch = System.Diagnostics.Stopwatch;
 	using Task = System.Threading.Tasks.Task;
 
 	internal sealed class VsDebuggerBridgeService : IDebugEventCallback2, IDisposable
@@ -34,6 +35,8 @@ namespace ClaudeVS
 		private readonly CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 		private readonly JavaScriptSerializer serializer = new JavaScriptSerializer();
 		private readonly object exceptionLock = new object();
+		private readonly SemaphoreSlim toolGate = new SemaphoreSlim(1, 1);
+		private const int ToolTimeoutMs = 5000;
 		private DTE2 dte;
 		private DebuggerEvents debuggerEvents;
 		private SolutionEvents solutionEvents;
@@ -308,14 +311,25 @@ namespace ClaudeVS
 
 		private object ExecuteToolOnMainThread(string tool, Dictionary<string, object> arguments)
 		{
-			return ThreadHelper.JoinableTaskFactory.Run(async delegate
+			if (!toolGate.Wait(0))
+				return BusyResult();
+
+			try
 			{
-				await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(package.DisposalToken);
-				return ExecuteTool(tool, arguments);
-			});
+				Stopwatch stopwatch = Stopwatch.StartNew();
+				return ThreadHelper.JoinableTaskFactory.Run(async delegate
+				{
+					await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(package.DisposalToken);
+					return ExecuteTool(tool, arguments, stopwatch);
+				});
+			}
+			finally
+			{
+				toolGate.Release();
+			}
 		}
 
-		private object ExecuteTool(string tool, Dictionary<string, object> arguments)
+		private object ExecuteTool(string tool, Dictionary<string, object> arguments, Stopwatch stopwatch)
 		{
 			ThreadHelper.ThrowIfNotOnUIThread();
 			if (dte == null)
@@ -326,17 +340,17 @@ namespace ClaudeVS
 			switch (tool)
 			{
 				case "debugger_status":
-					return GetStatus();
+					return GetStatus(stopwatch);
 				case "debugger_threads":
 					return GetThreads();
 				case "debugger_call_stack":
 					return GetCallStack(arguments);
 				case "debugger_locals":
-					return GetLocals(arguments);
+					return GetLocals(arguments, stopwatch);
 				case "debugger_evaluate":
-					return Evaluate(arguments);
+					return Evaluate(arguments, stopwatch);
 				case "debugger_exception":
-					return GetException();
+					return GetException(stopwatch);
 				case "debugger_output":
 					return GetOutput(arguments);
 				case "debugger_breakpoints":
@@ -346,9 +360,10 @@ namespace ClaudeVS
 			}
 		}
 
-		private Dictionary<string, object> GetStatus()
+		private Dictionary<string, object> GetStatus(Stopwatch stopwatch)
 		{
 			ThreadHelper.ThrowIfNotOnUIThread();
+			CheckBudget(stopwatch);
 			Debugger debugger = dte?.Debugger;
 			Dictionary<string, object> status = BaseResult(debugger, true, null);
 			status["process"] = GetProcess(debugger);
@@ -356,7 +371,7 @@ namespace ClaudeVS
 			status["thread"] = GetCurrentThread(debugger);
 			status["currentFrame"] = GetCurrentFrame(debugger);
 			status["breakReason"] = GetBreakReason(debugger);
-			status["exception"] = GetExceptionSnapshot(debugger, true);
+			status["exception"] = GetExceptionSnapshot(debugger, false, stopwatch);
 			return status;
 		}
 
@@ -423,16 +438,17 @@ namespace ClaudeVS
 			return result;
 		}
 
-		private Dictionary<string, object> GetLocals(Dictionary<string, object> arguments)
+		private Dictionary<string, object> GetLocals(Dictionary<string, object> arguments, Stopwatch stopwatch)
 		{
 			ThreadHelper.ThrowIfNotOnUIThread();
+			CheckBudget(stopwatch);
 			Debugger debugger = dte?.Debugger;
 			Dictionary<string, object> unavailable = RequireBreakMode(debugger);
 			if (unavailable != null)
 				return unavailable;
 
 			int? frameIndex = GetNullableInt(arguments, "frameIndex");
-			int maxDepth = Clamp(GetInt(arguments, "maxDepth", 2), 0, 5);
+			int maxDepth = Clamp(GetInt(arguments, "maxDepth", 0), 0, 5);
 			int maxChildren = Clamp(GetInt(arguments, "maxChildren", 50), 1, 200);
 			EnvDTE.StackFrame frame = frameIndex.HasValue ? FindFrame(debugger, frameIndex.Value) : GetSafe(() => debugger.CurrentStackFrame);
 			if (frame == null)
@@ -445,15 +461,20 @@ namespace ClaudeVS
 				int count = 0;
 				foreach (Expression local in frame.Locals)
 				{
+					CheckBudget(stopwatch);
 					if (count >= maxChildren)
 					{
 						truncated = true;
 						break;
 					}
 
-					locals.Add(GetExpressionNode(local, maxDepth, maxChildren));
+					locals.Add(GetExpressionNode(local, maxDepth, maxChildren, stopwatch));
 					count++;
 				}
+			}
+			catch (TimeoutException)
+			{
+				truncated = true;
 			}
 			catch
 			{
@@ -463,12 +484,15 @@ namespace ClaudeVS
 			result["frame"] = GetStackFrame(frame, frameIndex ?? -1, true);
 			result["locals"] = locals;
 			result["truncated"] = truncated;
+			if (stopwatch.ElapsedMilliseconds >= ToolTimeoutMs)
+				result["message"] = "Debugger locals were truncated because the MCP request reached the 5 second limit.";
 			return result;
 		}
 
-		private Dictionary<string, object> Evaluate(Dictionary<string, object> arguments)
+		private Dictionary<string, object> Evaluate(Dictionary<string, object> arguments, Stopwatch stopwatch)
 		{
 			ThreadHelper.ThrowIfNotOnUIThread();
+			CheckBudget(stopwatch);
 			Debugger debugger = dte?.Debugger;
 			Dictionary<string, object> unavailable = RequireBreakMode(debugger);
 			if (unavailable != null)
@@ -496,13 +520,19 @@ namespace ClaudeVS
 
 			try
 			{
-				Expression expression = debugger.GetExpression(expressionText, false, timeoutMs);
+				Expression expression = debugger.GetExpression(expressionText, false, GetExpressionTimeoutMs(stopwatch, timeoutMs));
+				CheckBudget(stopwatch);
 				result["isValid"] = GetSafe(() => expression.IsValidValue);
 				result["name"] = GetSafe(() => expression.Name);
 				result["type"] = GetSafe(() => expression.Type);
 				result["value"] = Limit(GetSafe(() => expression.Value), 4000);
 				if (!GetSafe(() => expression.IsValidValue))
 					result["error"] = "Expression did not produce a valid value.";
+			}
+			catch (TimeoutException ex)
+			{
+				result["isValid"] = false;
+				result["error"] = ex.Message;
 			}
 			catch (Exception ex)
 			{
@@ -513,12 +543,12 @@ namespace ClaudeVS
 			return result;
 		}
 
-		private Dictionary<string, object> GetException()
+		private Dictionary<string, object> GetException(Stopwatch stopwatch)
 		{
 			ThreadHelper.ThrowIfNotOnUIThread();
 			Debugger debugger = dte?.Debugger;
 			Dictionary<string, object> result = BaseResult(debugger, true, null);
-			result["exception"] = GetExceptionSnapshot(debugger, true);
+			result["exception"] = GetExceptionSnapshot(debugger, true, stopwatch);
 			return result;
 		}
 
@@ -625,6 +655,18 @@ namespace ClaudeVS
 			result["process"] = GetProcess(debugger ?? dte?.Debugger);
 			result["pid"] = GetDebuggerPid(debugger ?? dte?.Debugger);
 			return result;
+		}
+
+		private Dictionary<string, object> BusyResult()
+		{
+			return new Dictionary<string, object>
+			{
+				{ "available", false },
+				{ "mode", "busy" },
+				{ "solution", null },
+				{ "devenvPid", devenvPid },
+				{ "message", "Another debugger MCP request is still running. Try again after it completes." }
+			};
 		}
 
 		private Dictionary<string, object> GetSolution()
@@ -740,8 +782,9 @@ namespace ClaudeVS
 			};
 		}
 
-		private Dictionary<string, object> GetExpressionNode(Expression expression, int depth, int maxChildren)
+		private Dictionary<string, object> GetExpressionNode(Expression expression, int depth, int maxChildren, Stopwatch stopwatch)
 		{
+			CheckBudget(stopwatch);
 			Dictionary<string, object> node = new Dictionary<string, object>
 			{
 				{ "name", GetSafe(() => expression.Name) },
@@ -760,15 +803,20 @@ namespace ClaudeVS
 				int count = 0;
 				foreach (Expression child in expression.DataMembers)
 				{
+					CheckBudget(stopwatch);
 					if (count >= maxChildren)
 					{
 						hasMore = true;
 						break;
 					}
 
-					children.Add(GetExpressionNode(child, depth - 1, maxChildren));
+					children.Add(GetExpressionNode(child, depth - 1, maxChildren, stopwatch));
 					count++;
 				}
+			}
+			catch (TimeoutException)
+			{
+				hasMore = true;
 			}
 			catch
 			{
@@ -784,6 +832,11 @@ namespace ClaudeVS
 		}
 
 		private Dictionary<string, object> GetExceptionSnapshot(Debugger debugger, bool includeEvaluation)
+		{
+			return GetExceptionSnapshot(debugger, includeEvaluation, null);
+		}
+
+		private Dictionary<string, object> GetExceptionSnapshot(Debugger debugger, bool includeEvaluation, Stopwatch stopwatch)
 		{
 			ThreadHelper.ThrowIfNotOnUIThread();
 			string exceptionType;
@@ -815,10 +868,11 @@ namespace ClaudeVS
 			{
 				try
 				{
-					Expression exception = debugger.GetExpression("$exception", false, 1000);
+					CheckBudget(stopwatch);
+					Expression exception = debugger.GetExpression("$exception", false, GetExpressionTimeoutMs(stopwatch, 1000));
 					if (exception != null && GetSafe(() => exception.IsValidValue))
 					{
-						result["current"] = GetExpressionNode(exception, 1, 20);
+						result["current"] = GetExpressionNode(exception, 1, 20, stopwatch);
 						hasCaptured = true;
 					}
 				}
@@ -826,9 +880,9 @@ namespace ClaudeVS
 				{
 				}
 
-				AddEvaluatedExceptionValue(debugger, result, "$exception.Message", "message");
-				AddEvaluatedExceptionValue(debugger, result, "$exception.StackTrace", "stackTrace");
-				AddEvaluatedExceptionValue(debugger, result, "$exception.InnerException", "innerException");
+				AddEvaluatedExceptionValue(debugger, result, "$exception.Message", "message", stopwatch);
+				AddEvaluatedExceptionValue(debugger, result, "$exception.StackTrace", "stackTrace", stopwatch);
+				AddEvaluatedExceptionValue(debugger, result, "$exception.InnerException", "innerException", stopwatch);
 			}
 
 			result["available"] = hasCaptured;
@@ -838,11 +892,13 @@ namespace ClaudeVS
 			return result;
 		}
 
-		private void AddEvaluatedExceptionValue(Debugger debugger, Dictionary<string, object> result, string expressionText, string key)
+		private void AddEvaluatedExceptionValue(Debugger debugger, Dictionary<string, object> result, string expressionText, string key, Stopwatch stopwatch)
 		{
 			try
 			{
-				Expression expression = debugger.GetExpression(expressionText, false, 1000);
+				CheckBudget(stopwatch);
+				Expression expression = debugger.GetExpression(expressionText, false, GetExpressionTimeoutMs(stopwatch, 1000));
+				CheckBudget(stopwatch);
 				if (expression != null && expression.IsValidValue)
 				{
 					string value = expression.Value;
@@ -1000,6 +1056,24 @@ namespace ClaudeVS
 		private bool LooksMutatingExpression(string expression)
 		{
 			return Regex.IsMatch(expression, @"(\+\+|--|\+=|-=|\*=|/=|%=|&=|\|=|\^=|<<=|>>=|(?<![=!<>])=(?!=)|;)");
+		}
+
+		private void CheckBudget(Stopwatch stopwatch)
+		{
+			if (stopwatch != null && stopwatch.ElapsedMilliseconds >= ToolTimeoutMs)
+				throw new TimeoutException("Debugger MCP request exceeded the 5 second limit.");
+		}
+
+		private int GetExpressionTimeoutMs(Stopwatch stopwatch, int requestedTimeoutMs)
+		{
+			if (stopwatch == null)
+				return requestedTimeoutMs;
+
+			long remaining = ToolTimeoutMs - stopwatch.ElapsedMilliseconds;
+			if (remaining < 100)
+				throw new TimeoutException("Debugger MCP request exceeded the 5 second limit.");
+
+			return Clamp((int)Math.Min(requestedTimeoutMs, remaining), 100, ToolTimeoutMs);
 		}
 
 		private int Clamp(int value, int min, int max)
