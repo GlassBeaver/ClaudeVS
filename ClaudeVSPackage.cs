@@ -35,6 +35,8 @@ namespace ClaudeVS
         /// </summary>
         public const string PackageGuidString = "b7d90b76-b34d-46e0-ab4f-888666287245";
 
+        private VsDebuggerBridgeService debuggerBridgeService;
+
         #region Package Members
 
         /// <summary>
@@ -50,12 +52,26 @@ namespace ClaudeVS
             // Do any initialization that requires the UI thread after switching to the UI thread.
             await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
+            debuggerBridgeService = new VsDebuggerBridgeService(this);
+            await debuggerBridgeService.InitializeAsync(cancellationToken);
+
             await ClaudeTerminalCommand.InitializeAsync(this);
             await SendFileLocationCommand.InitializeAsync(this);
             await SendCommentLineCommand.InitializeAsync(this);
             await SendDebuggerExceptionCommand.InitializeAsync(this);
             await AgentActionCommand.InitializeAsync(this);
             await SpeechCommand.InitializeAsync(this);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                debuggerBridgeService?.Dispose();
+                debuggerBridgeService = null;
+            }
+
+            base.Dispose(disposing);
         }
 
         #endregion

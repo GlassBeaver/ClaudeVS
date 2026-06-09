@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
 	<Metadata>
-		<Identity Id="ClaudeVS.2ca07fc7-11ad-4410-baca-b481834cd8a5" Version="4.6.1" Language="en-US" Publisher="GlassBeaver" />
+		<Identity Id="ClaudeVS.2ca07fc7-11ad-4410-baca-b481834cd8a5" Version="5.0" Language="en-US" Publisher="GlassBeaver" />
 		<DisplayName>ClaudeVS - Claude Code Integration</DisplayName>
 		<Description xml:space="preserve">Claude Code inside Visual Studio.</Description>
 		<Icon>Resources\ClaudeVS_128.png</Icon>

@@ -352,6 +352,7 @@ namespace ClaudeVS
 
 				var startupInfo = new STARTUPINFOEX();
 				startupInfo.StartupInfo.cb = Marshal.SizeOf<STARTUPINFOEX>();
+				startupInfo.StartupInfo.dwFlags = (int)STARTF_USESTDHANDLES;
 				startupInfo.lpAttributeList = Marshal.AllocHGlobal(lpSize);
 
 				success = InitializeProcThreadAttributeList(startupInfo.lpAttributeList, 1, 0, ref lpSize);
@@ -384,6 +385,11 @@ namespace ClaudeVS
 					cliCommand = GetClaudeCliPath();
 					isSpecialCommand = true;
 				}
+				else if (string.Equals(cliCommand, "codex", StringComparison.OrdinalIgnoreCase))
+				{
+					cliCommand = GetCodexCliPath();
+					isSpecialCommand = true;
+				}
 				else if (string.Equals(cliCommand, "copilot", StringComparison.OrdinalIgnoreCase))
 				{
 					cliCommand = GetCopilotCliPath();
@@ -412,7 +418,7 @@ namespace ClaudeVS
 					ref pSec,
 					ref tSec,
 					false,
-					EXTENDED_STARTUPINFO_PRESENT,
+					EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT,
 					IntPtr.Zero,
 					workingDirectory,
 					ref startupInfo,
@@ -707,6 +713,49 @@ namespace ClaudeVS
 			}
 
 			return "claude";
+		}
+
+		private string GetCodexCliPath()
+		{
+			string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+			string packagedExePath = Path.Combine(
+				appData,
+				"npm",
+				"node_modules",
+				"@openai",
+				"codex",
+				"node_modules",
+				"@openai",
+				"codex-win32-x64",
+				"vendor",
+				"x86_64-pc-windows-msvc",
+				"bin",
+				"codex.exe"
+			);
+			if (File.Exists(packagedExePath))
+				return packagedExePath;
+
+			string npmPath = Path.Combine(appData, "npm", "codex.cmd");
+			if (File.Exists(npmPath))
+				return npmPath;
+
+			string pathEnv = Environment.GetEnvironmentVariable("PATH") ?? "";
+			foreach (string dir in pathEnv.Split(Path.PathSeparator))
+			{
+				string codexPath = Path.Combine(dir, "codex.exe");
+				if (File.Exists(codexPath))
+					return codexPath;
+
+				codexPath = Path.Combine(dir, "codex.cmd");
+				if (File.Exists(codexPath))
+					return codexPath;
+
+				codexPath = Path.Combine(dir, "codex");
+				if (File.Exists(codexPath))
+					return codexPath;
+			}
+
+			return "codex";
 		}
 
 		public void Dispose()
