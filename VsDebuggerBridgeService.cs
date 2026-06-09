@@ -68,6 +68,7 @@ namespace ClaudeVS
 			dte = Package.GetGlobalService(typeof(DTE)) as DTE2;
 			SubscribeToDebuggerEvents();
 			SubscribeToSolutionEvents();
+			McpSetup.CleanupStaleDiscoveryRecords();
 			CopyHelperToStablePath();
 			WriteDiscoveryRecord();
 			pipeTask = Task.Run(() => RunPipeServerAsync(cancellationTokenSource.Token));
@@ -1109,34 +1110,12 @@ namespace ClaudeVS
 
 		private string GetDiscoveryDirectory()
 		{
-			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ClaudeVS", "DebuggerBridge", "instances");
+			return McpSetup.GetDiscoveryDirectory();
 		}
 
 		private void CopyHelperToStablePath()
 		{
-			try
-			{
-				string extensionDirectory = Path.GetDirectoryName(typeof(ClaudeVSPackage).Assembly.Location);
-				if (string.IsNullOrEmpty(extensionDirectory))
-					return;
-
-				string sourceDirectory = Path.Combine(extensionDirectory, "DebuggerMcp");
-				if (!Directory.Exists(sourceDirectory))
-					return;
-
-				string targetDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ClaudeVS", "DebuggerMcp", "current");
-				Directory.CreateDirectory(targetDirectory);
-
-				foreach (string sourceFile in Directory.GetFiles(sourceDirectory))
-				{
-					string targetFile = Path.Combine(targetDirectory, Path.GetFileName(sourceFile));
-					if (!File.Exists(targetFile) || new FileInfo(sourceFile).Length != new FileInfo(targetFile).Length || File.GetLastWriteTimeUtc(sourceFile) > File.GetLastWriteTimeUtc(targetFile))
-						File.Copy(sourceFile, targetFile, true);
-				}
-			}
-			catch
-			{
-			}
+			McpSetup.CopyHelperToStablePath();
 		}
 
 		private string CreateToken()

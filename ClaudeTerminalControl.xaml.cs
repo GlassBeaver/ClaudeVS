@@ -98,6 +98,7 @@ namespace ClaudeVS
 		private AgentTab activeTab;
 		private AgentTab lastUserSelectedTab;
 		private Popup quickSwitchPopup;
+		private Popup mcpPopup;
 		private bool quickSwitchInProgress;
 		private readonly string[] quickSwitchClaudeModels = { "Opus 4.6", "Sonnet 4.6", "Haiku 4.5" };
 		private readonly string[] quickSwitchClaudeModelIds = { "claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5" };
@@ -1428,6 +1429,205 @@ namespace ClaudeVS
 			}
 		}
 
+		private void McpButton_Click(object sender, RoutedEventArgs e)
+		{
+			try
+			{
+				if (mcpPopup != null && mcpPopup.IsOpen)
+				{
+					mcpPopup.IsOpen = false;
+					return;
+				}
+
+				string effectiveTheme = currentTheme;
+				if (effectiveTheme == "System")
+					effectiveTheme = IsSystemDarkMode() ? "Dark" : "Light";
+				bool isDark = effectiveTheme != "Light";
+
+				var bgBrush = isDark
+					? new SolidColorBrush(Color.FromRgb(0x2D, 0x2D, 0x30))
+					: new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5));
+				var borderBrush = isDark
+					? new SolidColorBrush(Color.FromRgb(0x3F, 0x3F, 0x46))
+					: new SolidColorBrush(Color.FromRgb(0xCC, 0xCC, 0xCC));
+				var fgBrush = isDark
+					? new SolidColorBrush(Color.FromRgb(0xD4, 0xD4, 0xD4))
+					: new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E));
+				var buttonBg = isDark
+					? new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E))
+					: new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF));
+				var buttonBorder = isDark
+					? new SolidColorBrush(Color.FromRgb(0x3F, 0x3F, 0x46))
+					: new SolidColorBrush(Color.FromRgb(0xCC, 0xCC, 0xCC));
+
+				var popup = new Popup
+				{
+					StaysOpen = false,
+					AllowsTransparency = true,
+					PlacementTarget = McpButton,
+					Placement = PlacementMode.Bottom,
+				};
+
+				var outerBorder = new Border
+				{
+					Background = bgBrush,
+					BorderBrush = borderBrush,
+					BorderThickness = new Thickness(1),
+					Padding = new Thickness(8),
+				};
+
+				var panel = new StackPanel
+				{
+					MinWidth = 220,
+				};
+
+				panel.Children.Add(new TextBlock
+				{
+					Text = "Debugger MCP",
+					Foreground = fgBrush,
+					FontWeight = FontWeights.Bold,
+					Margin = new Thickness(4, 2, 4, 8),
+				});
+
+				var statusText = new TextBox
+				{
+					Text = "Ready",
+					IsReadOnly = true,
+					BorderThickness = new Thickness(0),
+					Background = bgBrush,
+					Foreground = fgBrush,
+					TextWrapping = TextWrapping.Wrap,
+					VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+					MaxWidth = 460,
+					MaxHeight = 180,
+					Margin = new Thickness(4, 8, 4, 2),
+				};
+
+				Style buttonStyle = (Style)FindResource(isDark ? "DarkButtonStyle" : "LightButtonStyle");
+				bool hasClient = false;
+				if (McpSetup.IsClientAvailable("codex"))
+				{
+					panel.Children.Add(CreateMcpPopupButton("Configure Codex", () => McpSetup.ConfigureClientAsync("codex"), statusText, buttonStyle, buttonBg, fgBrush, buttonBorder, true));
+					hasClient = true;
+				}
+
+				if (McpSetup.IsClientAvailable("claude"))
+				{
+					panel.Children.Add(CreateMcpPopupButton("Configure Claude", () => McpSetup.ConfigureClientAsync("claude"), statusText, buttonStyle, buttonBg, fgBrush, buttonBorder, true));
+					hasClient = true;
+				}
+
+				if (!hasClient)
+				{
+					panel.Children.Add(new TextBlock
+					{
+						Text = "Codex and Claude CLIs were not found.",
+						Foreground = fgBrush,
+						TextWrapping = TextWrapping.Wrap,
+						Margin = new Thickness(4, 2, 4, 6),
+					});
+				}
+
+				panel.Children.Add(CreateMcpPopupButton("Verify Setup", () => McpSetup.VerifyAsync(), statusText, buttonStyle, buttonBg, fgBrush, buttonBorder, false));
+				panel.Children.Add(CreateMcpCopyPopupButton(statusText, buttonStyle, buttonBg, fgBrush, buttonBorder));
+				panel.Children.Add(statusText);
+
+				outerBorder.Child = panel;
+				popup.Child = outerBorder;
+				mcpPopup = popup;
+				popup.IsOpen = true;
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex.Message, "ClaudeVS MCP Setup", MessageBoxButton.OK, MessageBoxImage.Error);
+			}
+		}
+
+		private Button CreateMcpPopupButton(string text, Func<System.Threading.Tasks.Task<McpSetupResult>> action, TextBox statusText, Style buttonStyle, Brush buttonBg, Brush buttonFg, Brush buttonBorder, bool showRestartPrompt)
+		{
+			var button = new Button
+			{
+				Content = text,
+				Margin = new Thickness(4, 2, 4, 2),
+				Padding = new Thickness(8, 4, 8, 4),
+				HorizontalContentAlignment = HorizontalAlignment.Left,
+				Background = buttonBg,
+				Foreground = buttonFg,
+				BorderBrush = buttonBorder,
+				BorderThickness = new Thickness(1),
+				Style = buttonStyle,
+				Cursor = Cursors.Hand,
+			};
+
+			button.Click += (s, ev) =>
+			{
+				button.IsEnabled = false;
+				statusText.Foreground = buttonFg;
+				statusText.Text = "Working...";
+				_ = System.Threading.Tasks.Task.Run(async () =>
+				{
+					string resultText;
+					bool success = false;
+					try
+					{
+						McpSetupResult result = await action().ConfigureAwait(false);
+						resultText = result.Message;
+						success = result.Success;
+					}
+					catch (Exception ex)
+					{
+						resultText = ex.Message;
+					}
+
+					_ = Dispatcher.BeginInvoke(new Action(() =>
+					{
+						statusText.Text = resultText;
+						button.IsEnabled = true;
+						if (showRestartPrompt && success)
+						{
+							MessageBox.Show("MCP ready! Click OK to restart the current agent now.", "ClaudeVS MCP Configured!", MessageBoxButton.OK, MessageBoxImage.Information);
+							RestartAgentButton_Click(RestartAgentButton, new RoutedEventArgs());
+						}
+					}));
+				});
+			};
+
+			return button;
+		}
+
+		private Button CreateMcpCopyPopupButton(TextBox statusText, Style buttonStyle, Brush buttonBg, Brush buttonFg, Brush buttonBorder)
+		{
+			var button = new Button
+			{
+				Content = "Copy Setup Commands",
+				Margin = new Thickness(4, 2, 4, 2),
+				Padding = new Thickness(8, 4, 8, 4),
+				HorizontalContentAlignment = HorizontalAlignment.Left,
+				Background = buttonBg,
+				Foreground = buttonFg,
+				BorderBrush = buttonBorder,
+				BorderThickness = new Thickness(1),
+				Style = buttonStyle,
+				Cursor = Cursors.Hand,
+			};
+
+			button.Click += (s, ev) =>
+			{
+				try
+				{
+					Clipboard.SetText(McpSetup.GetManualCommands());
+					statusText.Foreground = buttonFg;
+					statusText.Text = "Copied MCP setup commands to the clipboard.";
+				}
+				catch (Exception ex)
+				{
+					statusText.Text = ex.Message;
+				}
+			};
+
+			return button;
+		}
+
 		public void ExecuteQuickSwitch(int presetIndex)
 		{
 			var agentType = GetQuickSwitchAgentType();
@@ -1672,6 +1872,7 @@ namespace ClaudeVS
 				ThemeButton.Style = (Style)FindResource("LightButtonStyle");
 				FontSizeButton.Style = (Style)FindResource("LightButtonStyle");
 				QuickSwitchButton.Style = (Style)FindResource("LightButtonStyle");
+				McpButton.Style = (Style)FindResource("LightButtonStyle");
 			}
 			else
 			{
@@ -1687,6 +1888,7 @@ namespace ClaudeVS
 				ThemeButton.Style = (Style)FindResource("DarkButtonStyle");
 				FontSizeButton.Style = (Style)FindResource("DarkButtonStyle");
 				QuickSwitchButton.Style = (Style)FindResource("DarkButtonStyle");
+				McpButton.Style = (Style)FindResource("DarkButtonStyle");
 			}
 
 			ToolbarBorder.Background = toolbarBg;
@@ -1718,6 +1920,10 @@ namespace ClaudeVS
 			QuickSwitchButton.Background = buttonBg;
 			QuickSwitchButton.Foreground = buttonFg;
 			QuickSwitchButton.BorderBrush = buttonBorder;
+
+			McpButton.Background = buttonBg;
+			McpButton.Foreground = buttonFg;
+			McpButton.BorderBrush = buttonBorder;
 
 			var tabItemStyle = (Style)FindResource(effectiveTheme == "Light" ? "LightTabItemStyle" : "DarkTabItemStyle");
 			var closeButtonStyle = (Style)FindResource(effectiveTheme == "Light" ? "LightTabCloseButtonStyle" : "DarkTabCloseButtonStyle");

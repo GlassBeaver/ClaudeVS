@@ -53,6 +53,7 @@
     <Compile Include="SendCommentLineCommand.cs" />
     <Compile Include="SendDebuggerExceptionCommand.cs" />
     <Compile Include="VsDebuggerBridgeService.cs" />
+    <Compile Include="McpSetup.cs" />
     <Compile Include="AgentActionCommand.cs" />
     <Compile Include="SpeechCommand.cs" />
     <Compile Include="ClaudeTerminalControl.xaml.cs">

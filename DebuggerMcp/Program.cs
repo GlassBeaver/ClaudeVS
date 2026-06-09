@@ -73,7 +73,7 @@ namespace ClaudeVS.DebuggerMcp
 				case "ping":
 					return SuccessResponse(id, new Dictionary<string, object>());
 				case "tools/list":
-					return SuccessResponse(id, new Dictionary<string, object> { { "_meta", new Dictionary<string, object>() }, { "nextCursor", null }, { "tools", GetTools() } });
+					return SuccessResponse(id, new Dictionary<string, object> { { "_meta", new Dictionary<string, object>() }, { "tools", GetTools() } });
 				case "tools/call":
 					return SuccessResponse(id, CallTool(parameters));
 				case "resources/list":

@@ -382,7 +382,7 @@
                     Content="⚡ QuickSwitch"
                     Padding="4,2"
                     FontSize="12"
-                    Margin="0"
+                    Margin="0,0,8,0"
                     HorizontalAlignment="Left"
                     Background="#1e1e1e"
                     Foreground="#d4d4d4"
@@ -392,6 +392,21 @@
                     IsTabStop="False"
                     Style="{StaticResource DarkButtonStyle}"
                     Click="QuickSwitchButton_Click"/>
+
+            <Button x:Name="McpButton"
+                    Content="MCP"
+                    Padding="4,2"
+                    FontSize="12"
+                    Margin="0"
+                    HorizontalAlignment="Left"
+                    Background="#1e1e1e"
+                    Foreground="#d4d4d4"
+                    BorderBrush="#1e1e1e"
+                    BorderThickness="0"
+                    Focusable="False"
+                    IsTabStop="False"
+                    Style="{StaticResource DarkButtonStyle}"
+                    Click="McpButton_Click"/>
             </StackPanel>
         </Border>
 
