@@ -355,6 +355,8 @@ namespace ClaudeVS
 					return GetOutput(arguments);
 				case "debugger_breakpoints":
 					return GetBreakpoints();
+				case "debugger_terminate":
+					return TerminateDebuggingSession();
 				default:
 					return Unavailable("Unknown debugger bridge tool: " + tool);
 			}
@@ -618,6 +620,32 @@ namespace ClaudeVS
 			}
 
 			result["breakpoints"] = breakpoints;
+			return result;
+		}
+
+		private Dictionary<string, object> TerminateDebuggingSession()
+		{
+			ThreadHelper.ThrowIfNotOnUIThread();
+			Debugger debugger = dte?.Debugger;
+			if (debugger == null)
+				return Unavailable("Visual Studio debugger is not available.", debugger);
+
+			dbgDebugMode initialMode = GetSafe(() => debugger.CurrentMode);
+			Dictionary<string, object> result = BaseResult(debugger, true, null);
+			result["initialMode"] = GetMode(debugger);
+
+			if (initialMode == dbgDebugMode.dbgDesignMode)
+			{
+				result["terminated"] = false;
+				result["message"] = "No active debugging session is running.";
+				return result;
+			}
+
+			debugger.TerminateAll();
+			result["terminated"] = true;
+			result["mode"] = GetMode(debugger);
+			result["process"] = GetProcess(debugger);
+			result["pid"] = GetDebuggerPid(debugger);
 			return result;
 		}
 

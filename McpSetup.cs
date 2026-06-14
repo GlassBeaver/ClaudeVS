@@ -50,7 +50,7 @@ namespace ClaudeVS
 				{
 					string targetFile = Path.Combine(targetDirectory, Path.GetFileName(sourceFile));
 					if (ShouldCopyHelperFile(sourceFile, targetFile))
-						File.Copy(sourceFile, targetFile, true);
+						CopyHelperFile(sourceFile, targetFile);
 				}
 
 				return File.Exists(GetStableHelperPath());
@@ -81,6 +81,57 @@ namespace ClaudeVS
 				return sourceTime > targetTime;
 
 			return new FileInfo(sourceFile).Length != new FileInfo(targetFile).Length;
+		}
+
+		private static void CopyHelperFile(string sourceFile, string targetFile)
+		{
+			try
+			{
+				File.Copy(sourceFile, targetFile, true);
+			}
+			catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+			{
+				if (!IsStableHelperPath(targetFile))
+					throw;
+
+				StopRunningStableHelpers(targetFile);
+				File.Copy(sourceFile, targetFile, true);
+			}
+		}
+
+		private static bool IsStableHelperPath(string path)
+		{
+			try
+			{
+				return string.Equals(Path.GetFullPath(path), Path.GetFullPath(GetStableHelperPath()), StringComparison.OrdinalIgnoreCase);
+			}
+			catch
+			{
+				return false;
+			}
+		}
+
+		private static void StopRunningStableHelpers(string targetFile)
+		{
+			foreach (Process process in Process.GetProcessesByName("ClaudeVS.DebuggerMcp"))
+			{
+				try
+				{
+					string path = process.MainModule?.FileName;
+					if (!string.Equals(Path.GetFullPath(path), Path.GetFullPath(targetFile), StringComparison.OrdinalIgnoreCase))
+						continue;
+
+					process.Kill();
+					process.WaitForExit(2000);
+				}
+				catch
+				{
+				}
+				finally
+				{
+					process.Dispose();
+				}
+			}
 		}
 
 		private static Version GetFileVersion(string path)

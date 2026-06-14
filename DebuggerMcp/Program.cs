@@ -288,11 +288,17 @@ namespace ClaudeVS.DebuggerMcp
 				Tool("debugger_output", "Return recent lines from a Visual Studio output pane.", ObjectSchema(
 					Property("pane", "string", "Output pane name. Defaults to Debug."),
 					Property("lineCount", "integer", "Number of recent lines to return."))),
-				Tool("debugger_breakpoints", "Return Visual Studio debugger breakpoints and last-hit marker.", EmptySchema())
+				Tool("debugger_breakpoints", "Return Visual Studio debugger breakpoints and last-hit marker.", EmptySchema()),
+				Tool("debugger_terminate", "Terminate the active Visual Studio debugging session, if any.", EmptySchema(), false, true)
 			};
 		}
 
 		private static Dictionary<string, object> Tool(string name, string description, Dictionary<string, object> inputSchema)
+		{
+			return Tool(name, description, inputSchema, true, false);
+		}
+
+		private static Dictionary<string, object> Tool(string name, string description, Dictionary<string, object> inputSchema, bool readOnly, bool destructive)
 		{
 			return new Dictionary<string, object>
 			{
@@ -300,7 +306,7 @@ namespace ClaudeVS.DebuggerMcp
 				{ "title", name },
 				{ "description", description },
 				{ "inputSchema", inputSchema },
-				{ "annotations", new Dictionary<string, object> { { "readOnlyHint", true }, { "destructiveHint", false }, { "openWorldHint", false } } }
+				{ "annotations", new Dictionary<string, object> { { "readOnlyHint", readOnly }, { "destructiveHint", destructive }, { "openWorldHint", false } } }
 			};
 		}
 
