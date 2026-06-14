@@ -8,6 +8,7 @@ namespace ClaudeVS.DebuggerMcp
 	using System.Linq;
 	using System.Security.Principal;
 	using System.Text;
+	using System.Threading.Tasks;
 	using System.Web.Script.Serialization;
 
 	internal static class Program
@@ -143,8 +144,6 @@ namespace ClaudeVS.DebuggerMcp
 			using (NamedPipeClientStream pipe = new NamedPipeClientStream(".", instance.PipeName, PipeDirection.InOut, PipeOptions.None, TokenImpersonationLevel.Impersonation))
 			{
 				pipe.Connect(BridgeTimeoutMs);
-				pipe.ReadTimeout = BridgeTimeoutMs;
-				pipe.WriteTimeout = BridgeTimeoutMs;
 				using (StreamReader reader = new StreamReader(pipe, Utf8))
 				using (StreamWriter writer = new StreamWriter(pipe, Utf8) { AutoFlush = true })
 				{
@@ -154,8 +153,8 @@ namespace ClaudeVS.DebuggerMcp
 						{ "tool", toolName },
 						{ "arguments", arguments }
 					};
-					writer.WriteLine(Serializer.Serialize(request));
-					string line = reader.ReadLine();
+					WriteLineWithTimeout(writer, Serializer.Serialize(request));
+					string line = ReadLineWithTimeout(reader);
 					if (string.IsNullOrWhiteSpace(line))
 						throw new InvalidOperationException("Debugger bridge did not return a response.");
 
@@ -486,6 +485,32 @@ namespace ClaudeVS.DebuggerMcp
 					output.Write(payload, 0, payload.Length);
 				}
 				output.Flush();
+			}
+		}
+
+		private static void WriteLineWithTimeout(StreamWriter writer, string line)
+		{
+			Task task = writer.WriteLineAsync(line);
+			WaitForBridgeTask(task, "Debugger bridge write timed out after 5 seconds.");
+		}
+
+		private static string ReadLineWithTimeout(StreamReader reader)
+		{
+			Task<string> task = reader.ReadLineAsync();
+			WaitForBridgeTask(task, "Debugger bridge read timed out after 5 seconds.");
+			return task.Result;
+		}
+
+		private static void WaitForBridgeTask(Task task, string timeoutMessage)
+		{
+			try
+			{
+				if (!task.Wait(BridgeTimeoutMs))
+					throw new TimeoutException(timeoutMessage);
+			}
+			catch (AggregateException ex)
+			{
+				throw ex.InnerException ?? ex;
 			}
 		}
 
