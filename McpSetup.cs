@@ -49,7 +49,7 @@ namespace ClaudeVS
 				foreach (string sourceFile in Directory.GetFiles(sourceDirectory))
 				{
 					string targetFile = Path.Combine(targetDirectory, Path.GetFileName(sourceFile));
-					if (!File.Exists(targetFile) || new FileInfo(sourceFile).Length != new FileInfo(targetFile).Length || File.GetLastWriteTimeUtc(sourceFile) > File.GetLastWriteTimeUtc(targetFile))
+					if (ShouldCopyHelperFile(sourceFile, targetFile))
 						File.Copy(sourceFile, targetFile, true);
 				}
 
@@ -59,6 +59,43 @@ namespace ClaudeVS
 			{
 				return false;
 			}
+		}
+
+		private static bool ShouldCopyHelperFile(string sourceFile, string targetFile)
+		{
+			if (!File.Exists(targetFile))
+				return true;
+
+			Version sourceVersion = GetFileVersion(sourceFile);
+			Version targetVersion = GetFileVersion(targetFile);
+			if (sourceVersion != null && targetVersion != null)
+			{
+				int versionComparison = sourceVersion.CompareTo(targetVersion);
+				if (versionComparison != 0)
+					return versionComparison > 0;
+			}
+
+			DateTime sourceTime = File.GetLastWriteTimeUtc(sourceFile);
+			DateTime targetTime = File.GetLastWriteTimeUtc(targetFile);
+			if (sourceTime != targetTime)
+				return sourceTime > targetTime;
+
+			return new FileInfo(sourceFile).Length != new FileInfo(targetFile).Length;
+		}
+
+		private static Version GetFileVersion(string path)
+		{
+			try
+			{
+				string version = FileVersionInfo.GetVersionInfo(path).FileVersion;
+				if (Version.TryParse(version, out Version parsed))
+					return parsed;
+			}
+			catch
+			{
+			}
+
+			return null;
 		}
 
 		public static void CleanupStaleDiscoveryRecords()
