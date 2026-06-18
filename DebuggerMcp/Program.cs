@@ -295,7 +295,8 @@ namespace ClaudeVS.DebuggerMcp
 					Property("pane", "string", "Output pane name. Defaults to Debug."),
 					Property("lineCount", "integer", "Number of recent lines to return."))),
 				Tool("debugger_breakpoints", "Return Visual Studio debugger breakpoints and last-hit marker.", EmptySchema()),
-				Tool("debugger_terminate", "Terminate the active Visual Studio debugging session, if any.", EmptySchema(), false, true)
+				Tool("debugger_terminate", "Terminate the active Visual Studio debugging session, if any.", EmptySchema(), false, true),
+				Tool("debugger_disconnect", "Call when finished debugging to release ClaudeVS debugger event hooks while leaving the MCP bridge available for future debugger tool calls.", EmptySchema(), false, false)
 			};
 		}
 

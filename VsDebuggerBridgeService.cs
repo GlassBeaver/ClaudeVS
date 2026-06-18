@@ -37,6 +37,7 @@ namespace ClaudeVS
 		private readonly SemaphoreSlim toolGate = new SemaphoreSlim(1, 1);
 		private const int ToolTimeoutMs = 5000;
 		private DTE2 dte;
+		private IVsDebugger vsDebugger;
 		private DebuggerEvents debuggerEvents;
 		private SolutionEvents solutionEvents;
 		private Task pipeTask;
@@ -45,6 +46,8 @@ namespace ClaudeVS
 		private string lastExceptionName;
 		private uint lastExceptionCode;
 		private string lastExceptionDescription;
+		private bool debugEventCallbackSubscribed;
+		private bool debuggerHooksEnabled;
 		private bool disposed;
 
 		public VsDebuggerBridgeService(AsyncPackage package)
@@ -68,7 +71,7 @@ namespace ClaudeVS
 
 			Current = this;
 			dte = Package.GetGlobalService(typeof(DTE)) as DTE2;
-			SubscribeToDebuggerEvents();
+			EnsureDebuggerHooks();
 			SubscribeToSolutionEvents();
 			McpSetup.CleanupStaleDiscoveryRecords();
 			CopyHelperToStablePath();
@@ -78,6 +81,9 @@ namespace ClaudeVS
 
 		public int Event(IDebugEngine2 pEngine, IDebugProcess2 pProcess, IDebugProgram2 pProgram, IDebugThread2 pThread, IDebugEvent2 pEvent, ref Guid riidEvent, uint dwAttrib)
 		{
+			if (!debuggerHooksEnabled)
+				return VSConstants.S_OK;
+
 			try
 			{
 				if (pEvent is IDebugExceptionEvent2 exceptionEvent)
@@ -116,6 +122,19 @@ namespace ClaudeVS
 
 			disposed = true;
 			cancellationTokenSource.Cancel();
+			try
+			{
+				ThreadHelper.JoinableTaskFactory.Run(async delegate
+				{
+					await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+					ReleaseDebuggerHooks();
+					ReleaseSolutionEvents();
+				});
+			}
+			catch
+			{
+			}
+
 			DeleteDiscoveryRecord();
 			cancellationTokenSource.Dispose();
 
@@ -123,15 +142,23 @@ namespace ClaudeVS
 				Current = null;
 		}
 
-		private void SubscribeToDebuggerEvents()
+		private void EnsureDebuggerHooks()
 		{
 			ThreadHelper.ThrowIfNotOnUIThread();
+			if (debuggerHooksEnabled)
+				return;
+
+			if (dte == null)
+				dte = Package.GetGlobalService(typeof(DTE)) as DTE2;
 
 			try
 			{
-				IVsDebugger debugger = Package.GetGlobalService(typeof(SVsShellDebugger)) as IVsDebugger;
-				if (debugger != null)
-					debugger.AdviseDebugEventCallback(this);
+				vsDebugger = Package.GetGlobalService(typeof(SVsShellDebugger)) as IVsDebugger;
+				if (vsDebugger != null)
+				{
+					vsDebugger.AdviseDebugEventCallback(this);
+					debugEventCallbackSubscribed = true;
+				}
 			}
 			catch
 			{
@@ -149,6 +176,46 @@ namespace ClaudeVS
 			catch
 			{
 			}
+
+			debuggerHooksEnabled = debugEventCallbackSubscribed || debuggerEvents != null;
+		}
+
+		private void ReleaseDebuggerHooks()
+		{
+			ThreadHelper.ThrowIfNotOnUIThread();
+			debuggerHooksEnabled = false;
+
+			if (debuggerEvents != null)
+			{
+				try
+				{
+					debuggerEvents.OnExceptionThrown -= OnExceptionThrown;
+					debuggerEvents.OnEnterBreakMode -= OnEnterBreakMode;
+				}
+				catch
+				{
+				}
+
+				debuggerEvents = null;
+			}
+
+			if (debugEventCallbackSubscribed)
+			{
+				try
+				{
+					IVsDebugger debugger = vsDebugger ?? Package.GetGlobalService(typeof(SVsShellDebugger)) as IVsDebugger;
+					if (debugger != null)
+						debugger.UnadviseDebugEventCallback(this);
+				}
+				catch
+				{
+				}
+
+				debugEventCallbackSubscribed = false;
+			}
+
+			vsDebugger = null;
+			ClearExceptionSnapshot();
 		}
 
 		private void SubscribeToSolutionEvents()
@@ -167,6 +234,25 @@ namespace ClaudeVS
 			catch
 			{
 			}
+		}
+
+		private void ReleaseSolutionEvents()
+		{
+			ThreadHelper.ThrowIfNotOnUIThread();
+
+			if (solutionEvents == null)
+				return;
+
+			try
+			{
+				solutionEvents.Opened -= OnSolutionOpened;
+				solutionEvents.AfterClosing -= OnSolutionAfterClosing;
+			}
+			catch
+			{
+			}
+
+			solutionEvents = null;
 		}
 
 		private void OnSolutionOpened()
@@ -197,6 +283,11 @@ namespace ClaudeVS
 			if (reason == dbgEventReason.dbgEventReasonExceptionThrown || reason == dbgEventReason.dbgEventReasonExceptionNotHandled)
 				return;
 
+			ClearExceptionSnapshot();
+		}
+
+		private void ClearExceptionSnapshot()
+		{
 			lock (exceptionLock)
 			{
 				lastExceptionType = null;
@@ -339,25 +430,37 @@ namespace ClaudeVS
 			switch (tool)
 			{
 				case "debugger_status":
+					EnsureDebuggerHooks();
 					return GetStatus(stopwatch);
 				case "debugger_threads":
+					EnsureDebuggerHooks();
 					return GetThreads();
 				case "debugger_call_stack":
+					EnsureDebuggerHooks();
 					return GetCallStack(arguments);
 				case "debugger_select_frame":
+					EnsureDebuggerHooks();
 					return SelectFrame(arguments);
 				case "debugger_locals":
+					EnsureDebuggerHooks();
 					return GetLocals(arguments, stopwatch);
 				case "debugger_evaluate":
+					EnsureDebuggerHooks();
 					return Evaluate(arguments, stopwatch);
 				case "debugger_exception":
+					EnsureDebuggerHooks();
 					return GetException(stopwatch);
 				case "debugger_output":
+					EnsureDebuggerHooks();
 					return GetOutput(arguments);
 				case "debugger_breakpoints":
+					EnsureDebuggerHooks();
 					return GetBreakpoints();
 				case "debugger_terminate":
+					EnsureDebuggerHooks();
 					return TerminateDebuggingSession();
+				case "debugger_disconnect":
+					return DisconnectDebuggerBridge();
 				default:
 					return Unavailable("Unknown debugger bridge tool: " + tool);
 			}
@@ -695,6 +798,25 @@ namespace ClaudeVS
 			}
 
 			result["breakpoints"] = breakpoints;
+			return result;
+		}
+
+		private Dictionary<string, object> DisconnectDebuggerBridge()
+		{
+			ThreadHelper.ThrowIfNotOnUIThread();
+			bool wasConnected = debuggerHooksEnabled || debugEventCallbackSubscribed || debuggerEvents != null;
+			ReleaseDebuggerHooks();
+
+			Dictionary<string, object> result = new Dictionary<string, object>
+			{
+				{ "available", true },
+				{ "mode", "disconnected" },
+				{ "solution", GetSolution() },
+				{ "devenvPid", devenvPid },
+				{ "disconnected", true },
+				{ "wasConnected", wasConnected }
+			};
+
 			return result;
 		}
 
