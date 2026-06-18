@@ -277,13 +277,19 @@ namespace ClaudeVS.DebuggerMcp
 				Tool("debugger_call_stack", "Return debugger call stack frames for the current or requested thread.", ObjectSchema(
 					Property("threadId", "integer", "Debugger thread id."),
 					Property("maxFrames", "integer", "Maximum number of frames to return."))),
+				Tool("debugger_select_frame", "Select a debugger stack frame in Visual Studio for the current or requested thread.", ObjectSchema(new[] { "frameIndex" },
+					Property("threadId", "integer", "Debugger thread id."),
+					Property("frameIndex", "integer", "Zero-based stack frame index.")), false, false),
 				Tool("debugger_locals", "Return bounded local variables for the current or requested stack frame.", ObjectSchema(
+					Property("threadId", "integer", "Debugger thread id."),
 					Property("frameIndex", "integer", "Zero-based stack frame index."),
 					Property("maxDepth", "integer", "Maximum nested child depth. Defaults to 0."),
 					Property("maxChildren", "integer", "Maximum children per expression."))),
-				Tool("debugger_evaluate", "Evaluate a read-only expression in the current stack frame.", ObjectSchema(new[] { "expression" },
+				Tool("debugger_evaluate", "Evaluate an expression in the current or requested stack frame.", ObjectSchema(new[] { "expression" },
 					Property("expression", "string", "Expression to evaluate."),
-					Property("timeoutMs", "integer", "Evaluation timeout in milliseconds."))),
+					Property("threadId", "integer", "Debugger thread id."),
+					Property("frameIndex", "integer", "Zero-based stack frame index."),
+					Property("timeoutMs", "integer", "Evaluation timeout in milliseconds.")), false, false),
 				Tool("debugger_exception", "Return current or last captured debugger exception details.", EmptySchema()),
 				Tool("debugger_output", "Return recent lines from a Visual Studio output pane.", ObjectSchema(
 					Property("pane", "string", "Output pane name. Defaults to Debug."),

@@ -11,7 +11,6 @@ namespace ClaudeVS
 	using System.Security.Cryptography;
 	using System.Security.Principal;
 	using System.Text;
-	using System.Text.RegularExpressions;
 	using System.Threading;
 	using System.Threading.Tasks;
 	using System.Web.Script.Serialization;
@@ -345,6 +344,8 @@ namespace ClaudeVS
 					return GetThreads();
 				case "debugger_call_stack":
 					return GetCallStack(arguments);
+				case "debugger_select_frame":
+					return SelectFrame(arguments);
 				case "debugger_locals":
 					return GetLocals(arguments, stopwatch);
 				case "debugger_evaluate":
@@ -440,6 +441,37 @@ namespace ClaudeVS
 			return result;
 		}
 
+		private Dictionary<string, object> SelectFrame(Dictionary<string, object> arguments)
+		{
+			ThreadHelper.ThrowIfNotOnUIThread();
+			Debugger debugger = dte?.Debugger;
+			Dictionary<string, object> unavailable = RequireBreakMode(debugger);
+			if (unavailable != null)
+				return unavailable;
+
+			int? frameIndex = GetNullableInt(arguments, "frameIndex");
+			if (!frameIndex.HasValue)
+				return Unavailable("frameIndex is required.", debugger);
+
+			int? threadId = GetNullableInt(arguments, "threadId");
+			EnvDTE.Thread thread;
+			EnvDTE.StackFrame frame = FindFrame(debugger, threadId, frameIndex.Value, out thread);
+			if (thread == null)
+				return Unavailable("Requested debugger thread is not available.", debugger);
+
+			if (frame == null)
+				return Unavailable("Requested debugger stack frame is not available.", debugger);
+
+			if (!TrySelectFrame(debugger, thread, frame, out string error))
+				return Unavailable("Could not select debugger stack frame: " + error, debugger);
+
+			Dictionary<string, object> result = BaseResult(debugger, true, null);
+			result["selected"] = true;
+			result["thread"] = GetThread(thread, GetSafe(() => debugger.CurrentThread));
+			result["frame"] = GetStackFrame(frame, frameIndex.Value, true);
+			return result;
+		}
+
 		private Dictionary<string, object> GetLocals(Dictionary<string, object> arguments, Stopwatch stopwatch)
 		{
 			ThreadHelper.ThrowIfNotOnUIThread();
@@ -450,9 +482,26 @@ namespace ClaudeVS
 				return unavailable;
 
 			int? frameIndex = GetNullableInt(arguments, "frameIndex");
+			int? threadId = GetNullableInt(arguments, "threadId");
 			int maxDepth = Clamp(GetInt(arguments, "maxDepth", 0), 0, 5);
 			int maxChildren = Clamp(GetInt(arguments, "maxChildren", 50), 1, 200);
-			EnvDTE.StackFrame frame = frameIndex.HasValue ? FindFrame(debugger, frameIndex.Value) : GetSafe(() => debugger.CurrentStackFrame);
+			int resolvedFrameIndex = frameIndex ?? -1;
+			EnvDTE.Thread thread;
+			EnvDTE.StackFrame frame;
+			if (frameIndex.HasValue || threadId.HasValue)
+			{
+				resolvedFrameIndex = frameIndex ?? 0;
+				frame = FindFrame(debugger, threadId, resolvedFrameIndex, out thread);
+			}
+			else
+			{
+				frame = GetSafe(() => debugger.CurrentStackFrame);
+				thread = GetSafe(() => debugger.CurrentThread);
+			}
+
+			if (threadId.HasValue && thread == null)
+				return Unavailable("Requested debugger thread is not available.", debugger);
+
 			if (frame == null)
 				return Unavailable("Requested debugger stack frame is not available.", debugger);
 
@@ -483,7 +532,8 @@ namespace ClaudeVS
 			}
 
 			Dictionary<string, object> result = BaseResult(debugger, true, null);
-			result["frame"] = GetStackFrame(frame, frameIndex ?? -1, true);
+			result["thread"] = GetThread(thread, GetSafe(() => debugger.CurrentThread));
+			result["frame"] = GetStackFrame(frame, resolvedFrameIndex, IsCurrentFrame(thread, frame, GetSafe(() => debugger.CurrentStackFrame), debugger));
 			result["locals"] = locals;
 			result["truncated"] = truncated;
 			if (stopwatch.ElapsedMilliseconds >= ToolTimeoutMs)
@@ -502,6 +552,8 @@ namespace ClaudeVS
 
 			string expressionText = GetString(arguments, "expression");
 			int timeoutMs = Clamp(GetInt(arguments, "timeoutMs", 1000), 100, 5000);
+			int? frameIndex = GetNullableInt(arguments, "frameIndex");
+			int? threadId = GetNullableInt(arguments, "threadId");
 			Dictionary<string, object> result = BaseResult(debugger, true, null);
 			result["expression"] = expressionText;
 
@@ -512,18 +564,41 @@ namespace ClaudeVS
 				return result;
 			}
 
-			if (LooksMutatingExpression(expressionText))
-			{
-				result["isValid"] = false;
-				result["rejected"] = true;
-				result["error"] = "Only read-only expressions are allowed.";
-				return result;
-			}
-
 			try
 			{
+				EnvDTE.Thread thread = GetSafe(() => debugger.CurrentThread);
+				EnvDTE.StackFrame frame = GetSafe(() => debugger.CurrentStackFrame);
+				int resolvedFrameIndex = frameIndex ?? -1;
+				if (frameIndex.HasValue || threadId.HasValue)
+				{
+					resolvedFrameIndex = frameIndex ?? 0;
+					frame = FindFrame(debugger, threadId, resolvedFrameIndex, out thread);
+					if (thread == null)
+					{
+						result["isValid"] = false;
+						result["error"] = "Requested debugger thread is not available.";
+						return result;
+					}
+
+					if (frame == null)
+					{
+						result["isValid"] = false;
+						result["error"] = "Requested debugger stack frame is not available.";
+						return result;
+					}
+
+					if (!TrySelectFrame(debugger, thread, frame, out string error))
+					{
+						result["isValid"] = false;
+						result["error"] = "Could not select debugger stack frame: " + error;
+						return result;
+					}
+				}
+
 				Expression expression = debugger.GetExpression(expressionText, false, GetExpressionTimeoutMs(stopwatch, timeoutMs));
 				CheckBudget(stopwatch);
+				result["thread"] = GetThread(thread, GetSafe(() => debugger.CurrentThread));
+				result["frame"] = GetStackFrame(frame, resolvedFrameIndex, IsCurrentFrame(thread, frame, GetSafe(() => debugger.CurrentStackFrame), debugger));
 				result["isValid"] = GetSafe(() => expression.IsValidValue);
 				result["name"] = GetSafe(() => expression.Name);
 				result["type"] = GetSafe(() => expression.Type);
@@ -1000,7 +1075,17 @@ namespace ClaudeVS
 			return null;
 		}
 
-		private EnvDTE.StackFrame FindFrame(Debugger debugger, int frameIndex)
+		private EnvDTE.StackFrame FindFrame(Debugger debugger, int? threadId, int frameIndex, out EnvDTE.Thread thread)
+		{
+			ThreadHelper.ThrowIfNotOnUIThread();
+			thread = threadId.HasValue ? FindThread(debugger, threadId.Value) : GetSafe(() => debugger.CurrentThread);
+			if (thread == null)
+				return null;
+
+			return FindFrame(thread, frameIndex);
+		}
+
+		private EnvDTE.StackFrame FindFrame(EnvDTE.Thread thread, int frameIndex)
 		{
 			ThreadHelper.ThrowIfNotOnUIThread();
 			if (frameIndex < 0)
@@ -1009,7 +1094,7 @@ namespace ClaudeVS
 			try
 			{
 				int index = 0;
-				foreach (EnvDTE.StackFrame frame in debugger.CurrentThread.StackFrames)
+				foreach (EnvDTE.StackFrame frame in thread.StackFrames)
 				{
 					if (index == frameIndex)
 						return frame;
@@ -1022,6 +1107,23 @@ namespace ClaudeVS
 			}
 
 			return null;
+		}
+
+		private bool TrySelectFrame(Debugger debugger, EnvDTE.Thread thread, EnvDTE.StackFrame frame, out string error)
+		{
+			ThreadHelper.ThrowIfNotOnUIThread();
+			error = null;
+			try
+			{
+				debugger.CurrentThread = thread;
+				debugger.CurrentStackFrame = frame;
+				return true;
+			}
+			catch (Exception ex)
+			{
+				error = ex.Message;
+				return false;
+			}
 		}
 
 		private bool IsCurrentFrame(EnvDTE.Thread thread, EnvDTE.StackFrame frame, EnvDTE.StackFrame currentFrame, Debugger debugger)
@@ -1079,11 +1181,6 @@ namespace ClaudeVS
 			{
 				return null;
 			}
-		}
-
-		private bool LooksMutatingExpression(string expression)
-		{
-			return Regex.IsMatch(expression, @"(\+\+|--|\+=|-=|\*=|/=|%=|&=|\|=|\^=|<<=|>>=|(?<![=!<>])=(?!=)|;)");
 		}
 
 		private void CheckBudget(Stopwatch stopwatch)
