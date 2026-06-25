@@ -3,7 +3,7 @@
 	<Metadata>
 		<Identity Id="ClaudeVS.2ca07fc7-11ad-4410-baca-b481834cd8a5" Version="5.0" Language="en-US" Publisher="GlassBeaver" />
 		<DisplayName>ClaudeVS - Claude Code Integration</DisplayName>
-		<Description xml:space="preserve">Claude Code inside Visual Studio.</Description>
+		<Description xml:space="preserve">Claude Code and Codex inside Visual Studio.</Description>
 		<Icon>Resources\ClaudeVS_128.png</Icon>
 	</Metadata>
 	<Installation>
