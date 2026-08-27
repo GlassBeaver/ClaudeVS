@@ -141,6 +141,22 @@
           <LocCanonicalName>.ClaudeVS.QuickSwitch4</LocCanonicalName>
         </Strings>
       </Button>
+      <Button guid="guidClaudeVSPackageCmdSet" id="PreviousAgentTabCommandId" priority="0x0112" type="Button">
+        <Parent guid="guidClaudeVSPackageCmdSet" id="ClaudeMenuGroup" />
+        <CommandFlag>CommandWellOnly</CommandFlag>
+        <Strings>
+          <ButtonText>Previous Agent Tab</ButtonText>
+          <LocCanonicalName>.ClaudeVS.PreviousAgentTab</LocCanonicalName>
+        </Strings>
+      </Button>
+      <Button guid="guidClaudeVSPackageCmdSet" id="NextAgentTabCommandId" priority="0x0113" type="Button">
+        <Parent guid="guidClaudeVSPackageCmdSet" id="ClaudeMenuGroup" />
+        <CommandFlag>CommandWellOnly</CommandFlag>
+        <Strings>
+          <ButtonText>Next Agent Tab</ButtonText>
+          <LocCanonicalName>.ClaudeVS.NextAgentTab</LocCanonicalName>
+        </Strings>
+      </Button>
     </Buttons>
 
     <Bitmaps>
@@ -162,6 +178,8 @@
     <KeyBinding guid="guidClaudeVSPackageCmdSet" id="QuickSwitch2CommandId" editor="guidClaudeTerminal" key1="2" mod1="Alt" />
     <KeyBinding guid="guidClaudeVSPackageCmdSet" id="QuickSwitch3CommandId" editor="guidClaudeTerminal" key1="3" mod1="Alt" />
     <KeyBinding guid="guidClaudeVSPackageCmdSet" id="QuickSwitch4CommandId" editor="guidClaudeTerminal" key1="4" mod1="Alt" />
+    <KeyBinding guid="guidClaudeVSPackageCmdSet" id="PreviousAgentTabCommandId" editor="guidClaudeTerminal" key1="VK_PRIOR" mod1="Control Shift" />
+    <KeyBinding guid="guidClaudeVSPackageCmdSet" id="NextAgentTabCommandId" editor="guidClaudeTerminal" key1="VK_NEXT" mod1="Control Shift" />
   </KeyBindings>
 
   <Symbols>
@@ -187,6 +205,8 @@
       <IDSymbol name="QuickSwitch3CommandId" value="0x010F" />
       <IDSymbol name="QuickSwitch4CommandId" value="0x0110" />
       <IDSymbol name="AgentAction8CommandId" value="0x0111" />
+      <IDSymbol name="PreviousAgentTabCommandId" value="0x0112" />
+      <IDSymbol name="NextAgentTabCommandId" value="0x0113" />
     </GuidSymbol>
 
     <GuidSymbol name="guidImages" value="{d8f1a2b3-4c5e-6f7a-8b9c-0d1e2f3a4b5c}" >

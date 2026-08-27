@@ -741,6 +741,24 @@ namespace ClaudeVS
 			FocusTerminal();
 		}
 
+		public void SwitchAgentTab(int direction)
+		{
+			if (agentTabs.Count < 2 || direction == 0)
+			{
+				return;
+			}
+
+			int currentIndex = agentTabs.IndexOf(activeTab);
+			if (currentIndex < 0)
+			{
+				SetActiveTab(agentTabs[0]);
+				return;
+			}
+
+			int nextIndex = (currentIndex + direction + agentTabs.Count) % agentTabs.Count;
+			SetActiveTab(agentTabs[nextIndex]);
+		}
+
 		private AgentTab GetTabByItem(object item)
 		{
 			foreach (var tab in agentTabs)
