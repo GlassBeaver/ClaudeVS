@@ -150,6 +150,14 @@ namespace ClaudeVS
                         string text = Clipboard.GetText();
                         inputToSend = "\x1b[200~" + text + "\x1b[201~";
                     }
+                    else
+                    {
+                        string imagePath = ClipboardImageFile.SaveFromClipboard();
+                        if (imagePath != null)
+                        {
+                            inputToSend = "\x1b[200~" + imagePath + "\x1b[201~";
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
