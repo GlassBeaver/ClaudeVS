@@ -14,7 +14,7 @@ ClaudeVS brings Claude Code, Codex, Gemini, Copilot, and custom AI coding CLIs i
 
 2. **Hotkeyable context delivery**
 
-   Send the agent exactly what it needs without staging a prompt by hand: selected code with file path and line number, task comments, clipboard text, terminal control shortcuts, and full debugger exception packets with stack trace, call stack, current frame, process/thread details, breakpoint info, and recent Debug output.
+   Send the agent exactly what it needs without staging a prompt by hand: paths of files dragged from Explorer, selected code with file path and line number, task comments, clipboard text, terminal control shortcuts, and full debugger exception packets with stack trace, call stack, current frame, process/thread details, breakpoint info, and recent Debug output.
 
 ## More Features
 

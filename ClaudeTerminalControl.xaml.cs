@@ -85,6 +85,7 @@ namespace ClaudeVS
 			public DateTime LastOutputTime = DateTime.MinValue;
 			public string Command;
 			public bool MouseHookInstalled;
+			public IntPtr FileDropHwnd = IntPtr.Zero;
 		}
 
 		private ClaudeTerminal claudeTerminal;
@@ -569,6 +570,11 @@ namespace ClaudeVS
 
 		public void DisposeAllTerminals()
 		{
+			foreach (var tab in agentTabs)
+			{
+				RevokeFileDrop(tab);
+			}
+
 			StopClaude();
 		}
 
@@ -876,6 +882,7 @@ namespace ClaudeVS
 				bool wasActive = (tabToClose == activeTab);
 
 				StopClaude(tabToClose);
+				RevokeFileDrop(tabToClose);
 				agentTabs.Remove(tabToClose);
 				AgentTabs.Items.Remove(tabToClose.TabItem);
 
@@ -965,6 +972,12 @@ namespace ClaudeVS
 							};
 							tab.MouseHookInstalled = true;
 						}
+
+						if (tab.TerminalHwnd != IntPtr.Zero && tab.TerminalHwnd != tab.FileDropHwnd
+							&& TerminalFileDropTarget.Register(tab.TerminalHwnd, paths => OnPathsDropped(tab, paths)))
+						{
+							tab.FileDropHwnd = tab.TerminalHwnd;
+						}
 					}
 				}
 
@@ -977,6 +990,22 @@ namespace ClaudeVS
 			catch (Exception ex)
 			{
 				Debug.WriteLine($"Exception in ExtractTerminalHandle: {ex}");
+			}
+		}
+
+		private void OnPathsDropped(AgentTab tab, string paths)
+		{
+			tab.Terminal?.WriteInput("\x1b[200~" + paths + "\x1b[201~");
+			System.Windows.Window.GetWindow(this)?.Activate();
+			SetActiveTab(tab);
+		}
+
+		private void RevokeFileDrop(AgentTab tab)
+		{
+			if (tab.FileDropHwnd != IntPtr.Zero)
+			{
+				TerminalFileDropTarget.Revoke(tab.FileDropHwnd);
+				tab.FileDropHwnd = IntPtr.Zero;
 			}
 		}
 
