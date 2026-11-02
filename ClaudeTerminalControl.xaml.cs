@@ -208,19 +208,11 @@ namespace ClaudeVS
 					workingDir = System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile);
 				}
 
-				bool initialized = conPtyTerminal.Initialize(workingDir);
-
-				if (!initialized)
-				{
-					conPtyTerminal?.Dispose();
-					return;
-				}
-
 				var terminalConnection = new ConPtyTerminalConnection(conPtyTerminal);
 
 				conPtyTerminal.OutputReceived += (sender, output) => ConPtyTerminal_OutputReceived(tab, output);
 
-				terminalConnection.WaitForConnectionReady();
+				AgentTabs.UpdateLayout();
 
 				tab.Terminal = conPtyTerminal;
 				tab.Connection = terminalConnection;
@@ -237,6 +229,17 @@ namespace ClaudeVS
 				UpdateToolbarColors();
 
 				UpdateTerminalMaxWidth(tab);
+
+				bool initialized = conPtyTerminal.Initialize(workingDir);
+
+				if (!initialized)
+				{
+					tab.TerminalControl.Connection = null;
+					tab.Connection = null;
+					tab.Terminal = null;
+					conPtyTerminal.Dispose();
+					return;
+				}
 
 				terminalConnection.Start();
 
@@ -280,13 +283,6 @@ namespace ClaudeVS
 				var terminalConnection = activeTab.Connection;
 				if (terminalConnection != null && activeTab.TerminalControl.ActualHeight > 0 && activeTab.TerminalControl.ActualWidth > 0)
 				{
-					double charHeight = currentFontSize * 1.2;
-
-					uint columns = 120;
-					uint rows = (uint)Math.Max(1, activeTab.TerminalControl.ActualHeight / charHeight);
-
-					terminalConnection.Resize(rows, columns);
-
 					var size = new Size(activeTab.TerminalControl.ActualWidth, activeTab.TerminalControl.ActualHeight);
 					activeTab.TerminalControl.TriggerResize(size);
 				}
