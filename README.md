@@ -44,7 +44,7 @@ All commands are rebindable in **Tools -> Options -> Environment -> Keyboard**.
 | `View.SendLocationtoAgent` | Active file path, current line number, and selected text. |
 | `View.SendTasktoAgent` | The current comment line as a code-generation task for insertion after that line. |
 | `View.SendDebuggerExceptiontoAgent` | Exception details, managed stack trace, inner exception, break reason, call stack, current frame, breakpoint info, process/thread info, and the last 10 Debug output lines. |
-| `ClaudeVS.AgentAction1` - `ClaudeVS.AgentAction8` | Terminal-scoped key forwarding for agent shortcuts such as `Ctrl+T`, `Ctrl+R`, `Ctrl+O`, `Ctrl+B`, `Alt+V`, `Ctrl+V`, `Alt+T`, and `Ctrl+F`; `Ctrl+V` sends clipboard text using bracketed paste. |
+| `ClaudeVS.AgentAction1` - `ClaudeVS.AgentAction8` | Terminal-scoped key forwarding for agent shortcuts such as `Ctrl+T`, `Ctrl+R`, `Ctrl+O`, `Ctrl+B`, `Alt+V`, `Ctrl+V`, `Alt+T`, and `Ctrl+F`; `Ctrl+V` sends clipboard text using bracketed paste, or saves a clipboard image to a temporary PNG file and sends its path. |
 | `ClaudeVS.QuickSwitch1` - `ClaudeVS.QuickSwitch4` | Run QuickSwitch preset 1 through 4. |
 | `ClaudeVS.SpeechCommand` | Toggle Windows speech recognition and send recognized text to the active agent. |
 
