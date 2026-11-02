@@ -417,5 +417,12 @@
                     Tag="Collapsed"
                     Style="{StaticResource AgentTabControlStyle}"
                     SelectionChanged="AgentTabs_SelectionChanged"/>
+
+        <TextBlock x:Name="TerminalConflictMessage"
+                   Grid.Row="1"
+                   Margin="16"
+                   TextWrapping="Wrap"
+                   Visibility="Collapsed"
+                   Text="ClaudeVS can't start because Visual Studio's integrated Terminal is already loaded in this session and uses an incompatible version of Microsoft.Terminal.Control.dll. Close the Terminal window (Ctrl+`), restart Visual Studio, and open ClaudeVS without opening the Terminal."/>
     </Grid>
 </UserControl>

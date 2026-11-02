@@ -44,6 +44,12 @@ namespace ClaudeVS
 		[DllImport("user32.dll")]
 		private static extern short GetAsyncKeyState(int vKey);
 
+		[DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+		private static extern IntPtr GetModuleHandle(string lpModuleName);
+
+		[DllImport("kernel32.dll", CharSet = CharSet.Ansi, ExactSpelling = true)]
+		private static extern IntPtr GetProcAddress(IntPtr hModule, string lpProcName);
+
 		private const int VK_LBUTTON = 0x01;
 		private const uint WM_MOUSEWHEEL = 0x020A;
 		private const int WHEEL_DELTA = 120;
@@ -132,6 +138,15 @@ namespace ClaudeVS
 		{
 			try
 			{
+				bool terminalLibraryCompatible = IsTerminalLibraryCompatible();
+				TerminalConflictMessage.Visibility = terminalLibraryCompatible ? Visibility.Collapsed : Visibility.Visible;
+				AgentTabs.Visibility = terminalLibraryCompatible ? Visibility.Visible : Visibility.Collapsed;
+				ToolbarBorder.IsEnabled = terminalLibraryCompatible;
+				if (!terminalLibraryCompatible)
+				{
+					return;
+				}
+
 				currentCommand = SettingsManager.GetLastCommand();
 				currentFontSize = SettingsManager.GetFontSize();
 				currentTheme = SettingsManager.GetTheme();
@@ -192,6 +207,25 @@ namespace ClaudeVS
 			catch (Exception ex)
 			{
 				Debug.WriteLine($"Exception in ClaudeTerminalControl_Loaded: {ex}");
+			}
+
+			bool IsTerminalLibraryCompatible()
+			{
+				IntPtr terminalLibrary = GetModuleHandle("Microsoft.Terminal.Control.dll");
+				if (terminalLibrary == IntPtr.Zero)
+				{
+					return true;
+				}
+
+				foreach (string requiredExport in new[] { "TerminalSetFocused", "TerminalIsSelectionActive", "TerminalUserScroll" })
+				{
+					if (GetProcAddress(terminalLibrary, requiredExport) == IntPtr.Zero)
+					{
+						return false;
+					}
+				}
+
+				return true;
 			}
 		}
 
