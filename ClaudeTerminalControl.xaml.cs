@@ -34,6 +34,9 @@ namespace ClaudeVS
 		[DllImport("Microsoft.Terminal.Control.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall, PreserveSig = true)]
 		private static extern void TerminalUserScroll(IntPtr terminal, int viewTop);
 
+		[DllImport("Microsoft.Terminal.Control.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.StdCall, PreserveSig = true)]
+		private static extern int TerminalCalculateResize(IntPtr terminal, int width, int height, out POINT dimensions);
+
 		[DllImport("user32.dll")]
 		[return: MarshalAs(UnmanagedType.Bool)]
 		private static extern bool GetCursorPos(out POINT lpPoint);
@@ -287,7 +290,7 @@ namespace ClaudeVS
 
 					terminalConnection.Resize(rows, columns);
 
-					var size = new Size(activeTab.TerminalControl.ActualWidth, activeTab.TerminalControl.ActualHeight);
+					var size = GetTerminalRenderSize(activeTab);
 					activeTab.TerminalControl.TriggerResize(size);
 				}
 			}
@@ -1736,7 +1739,7 @@ namespace ClaudeVS
 
 				if (tab.TerminalControl.ActualHeight > 0 && tab.TerminalControl.ActualWidth > 0)
 				{
-					var size = new Size(tab.TerminalControl.ActualWidth, tab.TerminalControl.ActualHeight);
+					var size = GetTerminalRenderSize(tab);
 					tab.TerminalControl.TriggerResize(size);
 				}
 			}
@@ -1754,8 +1757,32 @@ namespace ClaudeVS
 			}
 		}
 
+		private double GetTerminalScrollbarWidth(AgentTab tab)
+		{
+			double scrollbarWidth = tab.TerminalScrollbar?.ActualWidth ?? 0;
+			return scrollbarWidth > 0 ? scrollbarWidth : SystemParameters.VerticalScrollBarWidth;
+		}
+
+		private Size GetTerminalRenderSize(AgentTab tab)
+		{
+			double controlWidth = double.IsNaN(tab.TerminalBorder.Width) ? tab.TerminalControl.ActualWidth : tab.TerminalBorder.Width;
+			return new Size(Math.Max(1, controlWidth - GetTerminalScrollbarWidth(tab)), tab.TerminalControl.ActualHeight);
+		}
+
+		protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+		{
+			base.OnDpiChanged(oldDpi, newDpi);
+			Dispatcher.BeginInvoke(new Action(ApplyFontSizeToAll), DispatcherPriority.Loaded);
+		}
+
 		private void UpdateTerminalMaxWidth(AgentTab tab)
 		{
+			if (TryCalculateTerminalWidth(out double terminalWidth))
+			{
+				tab.TerminalBorder.Width = terminalWidth;
+				return;
+			}
+
 			// typically, it's +80 Width per font size but there's a trap at 16 where it's +3 compared to 14 and so requires + (3 * 80) instead of + (2 * 80)
 			if (currentFontSize == 8)
 				tab.TerminalBorder.Width = 740.0;
@@ -1777,6 +1804,46 @@ namespace ClaudeVS
 				tab.TerminalBorder.Width = 1780.0;
 			else if (currentFontSize == 24)
 				tab.TerminalBorder.Width = 2100.0;
+
+			bool TryCalculateTerminalWidth(out double width)
+			{
+				const int terminalColumns = 120;
+				const int searchLimit = terminalColumns * 256;
+
+				width = 0;
+				if (tab.TerminalHandle == IntPtr.Zero)
+				{
+					return false;
+				}
+
+				if (TerminalCalculateResize(tab.TerminalHandle, searchLimit, searchLimit, out POINT dimensions) < 0 || dimensions.X < terminalColumns)
+				{
+					return false;
+				}
+
+				int low = 1;
+				int high = searchLimit;
+				while (low < high)
+				{
+					int middle = low + (high - low) / 2;
+					if (TerminalCalculateResize(tab.TerminalHandle, middle, searchLimit, out dimensions) < 0)
+					{
+						return false;
+					}
+
+					if (dimensions.X >= terminalColumns)
+					{
+						high = middle;
+					}
+					else
+					{
+						low = middle + 1;
+					}
+				}
+
+				width = (low + 1) / VisualTreeHelper.GetDpi(tab.TerminalControl).DpiScaleX + GetTerminalScrollbarWidth(tab);
+				return true;
+			}
 		}
 
 		private void ThemeButton_Click(object sender, RoutedEventArgs e)
@@ -1830,7 +1897,7 @@ namespace ClaudeVS
 
 				if (tab.TerminalControl.ActualHeight > 0 && tab.TerminalControl.ActualWidth > 0)
 				{
-					var size = new Size(tab.TerminalControl.ActualWidth, tab.TerminalControl.ActualHeight);
+					var size = GetTerminalRenderSize(tab);
 					tab.TerminalControl.TriggerResize(size);
 				}
 			}
